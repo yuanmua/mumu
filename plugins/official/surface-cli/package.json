@@ -1,0 +1,15 @@
+{
+  "name": "@mumu/surface-cli",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "CLI 表现端：配速呈现 + 送达回报 + 打断 + 管理命令",
+  "mumu": {
+    "enabled": true,
+    "order": 10,
+    "description": "CLI 表现端：打字机呈现、送达回报、打断；登记 /plugins /plugin /config /log /stream /quit 到命令注册表",
+    "defaults": { "paceMs": 25 }
+  }
+}

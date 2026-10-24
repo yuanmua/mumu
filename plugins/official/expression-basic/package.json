@@ -1,0 +1,15 @@
+{
+  "name": "@mumu/expression-basic",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "基础表情/动作词汇（带使用提示）+ 教学段落 + 分段标记",
+  "mumu": {
+    "enabled": true,
+    "order": 0,
+    "description": "基础表情/动作词汇（每个词带何时用的提示）+ 教学段落；其他插件的词汇自动纳入；教 <|br|> 分段",
+    "defaults": { "perReply": "1～3" }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "@mumu/action-computer",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "computer 动作：经身体服务（apps/body）在她自己的 Windows 上做事",
+  "mumu": {
+    "title": "电脑身体",
+    "enabled": true,
+    "order": 0,
+    "description": "computer 动作：task.agent 角色跑 JSON 工具循环，驱动她 Windows 上的身体服务（命令 / UI Automation / 键鼠 / 浏览器）；边做边聊，做完以 computer.result 感知回报导演；每步留截图；网页状态卡「电脑身体」、面板「电脑任务」；/body 看状态、/body stop 急停",
+    "defaults": {
+      "url": "http://127.0.0.1:8765",
+      "tokenSecret": "",
+      "maxSteps": 25,
+      "requestTimeoutSec": 90,
+      "stepWaitSec": 300,
+      "observationChars": 3000,
+      "shots": true,
+      "shotScale": 0.5,
+      "shotsDir": "data/media",
+      "shotsKeep": 400,
+      "panelTasks": 30
+    },
+    "ui": {
+      "url": { "label": "身体服务地址", "hint": "她电脑上的身体服务（apps/body），后端和它在同一台机器时用本机地址；状态页的「电脑身体」卡会探活它" },
+      "tokenSecret": { "label": "token 的密钥名", "hint": "身体服务开了 token 时，填 /secret set 存的名字；没开就留空" },
+      "maxSteps": { "label": "默认步数上限", "hint": "一件事最多走几步（每步一次模型调用）；导演可按任务单次给更多，封顶 150", "widget": "slider", "min": 5, "max": 150, "step": 5 },
+      "requestTimeoutSec": { "label": "单步超时（秒）", "hint": "身体服务一个接口最多等多久；exec 按它自己的 timeoutSec + 30 秒另算", "widget": "slider", "min": 10, "max": 600, "step": 10 },
+      "stepWaitSec": { "label": "超时后再等多久（秒）", "hint": "一步没回应但身体服务还活着时，按「还在执行」再等它做完的上限；探活连着 3 次不通才算连不上", "widget": "slider", "min": 0, "max": 900, "step": 30 },
+      "observationChars": { "label": "每步结果最多给模型多少字", "hint": "控件树、网页正文都可能几千字，超过就截断", "widget": "slider", "min": 500, "max": 10000, "step": 500 },
+      "shots": { "label": "每步保存截图", "hint": "每一步做完截一张小图存进媒体目录，「电脑任务」面板里按链接看；关掉省磁盘和时间" },
+      "shotScale": { "label": "截图缩放", "hint": "相对屏幕的比例；0.5 = 长宽各一半，一张几十 KB", "widget": "slider", "min": 0.2, "max": 1, "step": 0.05 },
+      "shotsDir": { "label": "截图目录", "hint": "相对后端工作目录；要和 surface-web 的「图片消息目录」一致，网页才取得到" },
+      "shotsKeep": { "label": "最多保留几张截图", "hint": "超过就删最老的（只删本插件的 cshot-* 文件）", "widget": "slider", "min": 50, "max": 2000, "step": 50 },
+      "panelTasks": { "label": "面板显示最近几次任务", "widget": "slider", "min": 5, "max": 100, "step": 5 }
+    }
+  }
+}

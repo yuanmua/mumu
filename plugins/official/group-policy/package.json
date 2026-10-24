@@ -1,0 +1,1089 @@
+{
+  "name": "@mumu/group-policy",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "群聊读空气 + 多会话调度：群消息要不要唤醒大脑（意愿可配、时段表、每群覆盖、限频），手机通知栏式的会话材料，群聊阅读窗口",
+  "mumu": {
+    "title": "群聊策略",
+    "enabled": true,
+    "order": 0,
+    "description": "群聊读空气 + 多会话调度：percept/pre-beat 给群消息算话题吸引力（兴趣、认真提问、接她的话题往上；灌水、复读、刷屏往下；低俗词、机器人只打折不归零，接不接她自己定；话题开着时可以主动接；没有开口次数上限）；两态：在聊（正在和她聊的人接着说、她参与的话题）多接几句、没在聊看一眼就过，没 @ 她的话一律打分、没有直通；认群里的其他机器人并标上；按人累积的脾气：谁老拿低俗话 @ 她、反复点名就烦，大脑可决定不理 / 拉黑（group.ignore）；beat/gather「手机上现在的情况」「读空气」；reply/prompt 群聊阅读窗口；/freq、/bot",
+    "defaults": {
+      "channelPrefixes": [
+        "qq:group:"
+      ],
+      "kinds": [
+        "group.message"
+      ],
+      "names": [
+        "沐沐"
+      ],
+      "talkValue": 1,
+      "capNonDirect": 0.9,
+      "rates": {},
+      "affinity": {
+        "enabled": true,
+        "caught": 0.04,
+        "mentioned": 0.02,
+        "ignored": -0.03,
+        "insulted": -0.1,
+        "insultWords": [
+          "人机",
+          "滚",
+          "闭嘴",
+          "烦死了",
+          "傻",
+          "蠢",
+          "有病",
+          "客服"
+        ],
+        "replyWindowSec": 120,
+        "halfLifeDays": 3,
+        "min": 0.3,
+        "max": 1.5
+      },
+      "mood": {
+        "enabled": true,
+        "valence": 0.6,
+        "arousal": 0.4,
+        "baseValence": 0.25,
+        "baseArousal": 0.45,
+        "min": 0.6,
+        "max": 1.4
+      },
+      "interest": {
+        "k": 3
+      },
+      "at": {
+        "base": 0.95,
+        "sensitivity": 1,
+        "onceSec": 180,
+        "onceBelow": 0.7,
+        "perPersonSec": 120
+      },
+      "feel": {
+        "coldBelow": 0.04,
+        "warmAbove": 0.12
+      },
+      "owners": [],
+      "groups": {},
+      "timeZone": "Asia/Shanghai",
+      "timeRules": [
+        {
+          "time": "00:30-07:30",
+          "value": 0.2
+        },
+        {
+          "time": "07:30-12:00",
+          "value": 0.7
+        },
+        {
+          "time": "12:00-19:00",
+          "value": 0.8
+        },
+        {
+          "time": "19:00-23:59",
+          "value": 1.2
+        },
+        {
+          "time": "00:00-00:30",
+          "value": 0.6
+        }
+      ],
+      "base": 0.08,
+      "question": 0.3,
+      "questionWords": [
+        "吗",
+        "呢",
+        "什么",
+        "怎么",
+        "为啥",
+        "为什么",
+        "咋",
+        "谁",
+        "哪",
+        "几点",
+        "多少",
+        "是不是",
+        "有没有",
+        "能不能",
+        "要不要",
+        "有人"
+      ],
+      "related": 0.4,
+      "relatedWindowSec": 600,
+      "relatedMinOverlap": 2,
+      "followUp": 0.4,
+      "followWindowSec": 90,
+      "followMaxBetween": 1,
+      "cold": 0,
+      "coldSec": 900,
+      "spam": 0.03,
+      "spamCount": 4,
+      "spamWindowSec": 30,
+      "flood": 0.03,
+      "floodPerMinute": 20,
+      "emojiOnly": 0.03,
+      "shortChat": 0.01,
+      "repeat": 0.01,
+      "command": 0.01,
+      "atOther": 0.03,
+      "chatter": 0.05,
+      "chatterWindow": 6,
+      "chatterWindowSec": 180,
+      "maxPerMinute": 0,
+      "tabooFactor": 0.5,
+      "tabooWindowSec": 120,
+      "tabooWords": [
+        "色情", "黄图", "黄段子", "涩图", "色图", "做爱", "性交", "约炮", "开车", "车速", "淫", "裸照", "毛片", "AV",
+        "ccb", "生命因子", "射了", "鸡巴", "几把", "牛子", "屌",
+        "傻逼", "sb", "操你", "草你", "艹你", "你妈", "死妈", "滚你",
+        "政治", "共产党", "台独", "习近平", "六四", "游行", "特朗普", "川普", "拜登", "普京"
+      ],
+      "sameSenderOnce": true,
+      "sameSenderFactor": 0.3,
+      "sameSenderWindowSec": 120,
+      "focus": 0.3,
+      "privateFirst": 0.3,
+      "privateWaitSec": 120,
+      "busyActions": [
+        "computer"
+      ],
+      "busy": 0,
+      "reading": {
+        "recent": 30,
+        "dense": 16,
+        "densePerMinute": 6,
+        "mentions": 6,
+        "threads": 4,
+        "convo": 20,
+        "limit": 48,
+        "pool": 200,
+        "people": 10,
+        "earlier": 2,
+        "peopleWindowSec": 1800
+      },
+      "phone": {
+        "windowSec": 1800,
+        "lines": 2,
+        "max": 8
+      },
+      "queue": {
+        "enabled": true,
+        "maxWaitSec": 90
+      },
+      "topic": {
+        "enabled": true,
+        "maxTurns": 5,
+        "inTopic": 0.3,
+        "interestInTopic": 0.6,
+        "inTopicDecay": 0.75,
+        "replyWindowSec": 120,
+        "switchAfter": 3,
+        "minOverlap": 2,
+        "closers": [
+          "好",
+          "好的",
+          "好吧",
+          "行",
+          "行吧",
+          "嗯",
+          "嗯嗯",
+          "哦",
+          "哦哦",
+          "噢",
+          "哈哈",
+          "哈哈哈",
+          "哈哈好",
+          "好哒",
+          "收到",
+          "ok",
+          "OK",
+          "知道了",
+          "晓得了",
+          "谢谢",
+          "谢啦",
+          "晚安",
+          "拜拜",
+          "88",
+          "睡了",
+          "那就这样",
+          "明天见"
+        ],
+        "closerMaxChars": 6,
+        "quietSec": 900,
+        "afterClose": 0.005,
+        "interestMaxTurns": 8,
+        "cooldownSec": 60,
+        "cooldownFactor": 0.3,
+        "atMaxTurns": 2
+      },
+      "convo": {
+        "enabled": true,
+        "idleSec": 120,
+        "offAfter": 2,
+        "maxUnanswered": 3,
+        "chatterMaxChars": 6,
+        "lines": 10
+      },
+      "bots": {
+        "enabled": true,
+        "list": [],
+        "notBots": [],
+        "learned": {},
+        "auto": true,
+        "threshold": 0.6,
+        "softCap": 0.5,
+        "minMessages": 3,
+        "attraction": 0.15,
+        "atWake": 0.5,
+        "unlockTurns": 2,
+        "unlockSec": 300,
+        "uinPrefixes": ["3889", "2854"],
+        "roles": ["bot", "robot"],
+        "nameWords": ["bot", "机器人", "助手", "AI", "GPT"],
+        "nameWeakWords": ["酱"],
+        "botWords": ["机器人", "人机", "bot", "AI", "token机", "烧token", "全自动"],
+        "botTexts": ["[](%7B%22version", "mqqapi://", "qqbot.ugcimg.cn", "LLM 响应错误", "models failed", "APITimeout"],
+        "fastReplySec": 3,
+        "commandReplySec": 6,
+        "weights": {
+          "uin": 0.4,
+          "role": 0.6,
+          "sig": 0.7,
+          "markdown": 0.4,
+          "markdownMore": 0.6,
+          "name": 0.35,
+          "nameWeak": 0.15,
+          "fast": 0.25,
+          "quote": 0.1,
+          "long": 0.2,
+          "command": 0.4,
+          "called": 0.3,
+          "calledMore": 0.45,
+          "burst": 0.1
+        }
+      },
+      "temper": {
+        "enabled": true,
+        "sensitivity": 1,
+        "halfLifeMin": 60,
+        "repeatWindowSec": 120,
+        "burstCount": 4,
+        "weights": { "at": 0.5, "repeatAt": 1, "taboo": 2, "insult": 2, "callBot": 1.5, "burst": 1, "botAt": 0.3 },
+        "ignoreMinutes": 30,
+        "ignoreMaxMinutes": 240,
+        "blockHours": 24,
+        "blockMaxHours": 168,
+        "callBotWords": ["你是机器人", "你是AI", "你是ai", "你是bot", "是不是机器人", "是不是AI", "自证", "证明你是人", "承认吧", "人机"]
+      },
+      "keep": 200
+    },
+    "ui": {
+      "talkValue": {
+        "label": "整体话多话少",
+        "hint": "所有群的接话概率都乘它；0.5 = 安静一半，0 = 只回 @ 她的",
+        "widget": "slider",
+        "min": 0,
+        "max": 2,
+        "step": 0.05
+      },
+      "capNonDirect": {
+        "label": "没 @ 她的话最高接话概率",
+        "hint": "只有被 @ / 叫名字才可能是 1；别的（在聊、有人在问、乘上兴趣）算完都封在这以下，在聊 × 兴趣再高也不是「每句必接」",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "groups": {
+        "label": "每群单独设置",
+        "hint": "键是频道（qq:group:群号），值里只写要改的项，如 {\"qq:group:123\": {\"talkValue\": 0.3, \"maxPerMinute\": 1}}",
+        "widget": "json"
+      },
+      "timeRules": {
+        "label": "时段表",
+        "hint": "按北京时间落在哪段就乘哪段的系数，可跨午夜；都不落在就是 1",
+        "widget": "json"
+      },
+      "timeZone": {
+        "label": "时区"
+      },
+      "base": {
+        "label": "没在聊：偶尔看一眼",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.01,
+        "hint": "她没在这个群聊着时，一句普通群消息让大脑看一眼的概率（再乘话多话少 × 群倍率 × 好感 × 心情 × 时段）；看了要不要插话大脑自己定。像人刷群：不是 0，也不是每句都看"
+      },
+      "question": {
+        "label": "有人在问",
+        "hint": "长短不限，是不是认真问交给大脑；一两个字的（「在吗」）仍按灌水压住",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "questionWords": {
+        "label": "算作问句的词"
+      },
+      "related": {
+        "label": "在聊：还在聊她参与的话题",
+        "hint": "后面的话和她上一句（连同她接的前两句）对得上，就当话题还在聊；对不上了就回到「没在聊」。在聊的三项取最高后按她主动接过的轮数衰减（topic.inTopicDecay）",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "relatedWindowSec": {
+        "label": "相关：她那句之后多少秒内"
+      },
+      "relatedMinOverlap": {
+        "label": "相关：至少共有几个双字词"
+      },
+      "followUp": {
+        "label": "在聊：接她刚才的话",
+        "hint": "她说完不久、中间没隔几句，而且这句像是冲她那句来的（有共有的词，或是在问）；光时间挨着不算",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "followWindowSec": {
+        "label": "接话：她说完多少秒内"
+      },
+      "followMaxBetween": {
+        "label": "接话：中间最多隔几句"
+      },
+      "shortChat": {
+        "label": "灌水（一两个字，「在吗」「哪家」也算）",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      "repeat": {
+        "label": "复读（和前面别人的话一字不差）",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      "cold": {
+        "label": "冷场后第一句（默认 0 = 关）",
+        "hint": "不是每隔多少句就一定要回——冷场本身不是开口的理由，默认关；想要再调上来",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "coldSec": {
+        "label": "冷场多少秒算冷场"
+      },
+      "spam": {
+        "label": "同一人刷屏时",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      "spamCount": {
+        "label": "刷屏：连发几句"
+      },
+      "spamWindowSec": {
+        "label": "刷屏：多少秒内"
+      },
+      "flood": {
+        "label": "全群刷屏时",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      "floodPerMinute": {
+        "label": "全群一分钟超过几句算刷屏"
+      },
+      "emojiOnly": {
+        "label": "纯表情",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      "command": {
+        "label": "给机器人发指令（/打卡、@xx /签到）",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      "atOther": {
+        "label": "@ 别人 / 引用别人的话",
+        "hint": "是在跟别人说，她一般不插嘴",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      "topic.atMaxTurns": {
+        "label": "同一个话题被 @ 着最多接几轮",
+        "hint": "斗嘴有个头：接满后再 @ 她不抢着回，交给大脑看要不要接（主人、正在和她聊的人除外）；0 = 不限",
+        "widget": "slider",
+        "min": 0,
+        "max": 10,
+        "step": 1
+      },
+      "bots": {
+        "label": "群里的机器人",
+        "hint": "认出来的机器人：它的话吸引力打折、@ 她不抢着回，大脑知道那是程序的套话、回不回自己定；不加好感。名单手动加；自动认出的在「learned」里，误判就把号放进「不是机器人」（面板「群里的机器人」有按钮）"
+      },
+      "bots.enabled": {
+        "label": "开"
+      },
+      "bots.list": {
+        "label": "机器人名单",
+        "hint": "写 QQ 号（或 qq:号）；主人在群里说「那个是机器人」、/bot mark、面板按钮都改这里"
+      },
+      "bots.notBots": {
+        "label": "不是机器人（误判取消）",
+        "hint": "这里的号自动打分再高也不算机器人"
+      },
+      "bots.learned": {
+        "label": "自动认出的",
+        "hint": "键是 qq:号，值里写着为什么；删掉一项 = 撤销（之后分数够了还会再认出来，想永久撤销放进「不是机器人」）",
+        "widget": "json"
+      },
+      "bots.auto": {
+        "label": "自动认机器人"
+      },
+      "bots.threshold": {
+        "label": "自动认出的分数线",
+        "widget": "slider",
+        "min": 0.2,
+        "max": 2,
+        "step": 0.05
+      },
+      "bots.softCap": {
+        "label": "行为类特征最多算几分",
+        "hint": "秒回、被人叫机器人、总引用、连发、长段、昵称带「酱」真人也常有，加起来封顶；光靠它们过不了线，得有一项硬特征（机器人文字、号段、身份、markdown、应指令、昵称带 bot/AI）",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "bots.minMessages": {
+        "label": "至少说过几句才自动认"
+      },
+      "bots.attraction": {
+        "label": "机器人说的话，吸引力乘",
+        "hint": "不归零：它的话大脑看得到，材料里标着「机器人的套话」，回不回她自己定；主人说「跟它聊两句」时按群友算",
+        "widget": "slider",
+        "min": 0.01,
+        "max": 1,
+        "step": 0.01
+      },
+      "bots.atWake": {
+        "label": "机器人 @ 她时叫醒大脑的概率",
+        "hint": "冷 @：脊椎不替她应、不打断她说话，大脑看到「机器人 @ 了你」自己定",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "bots.unlockTurns": {
+        "label": "解锁后能跟它聊几轮",
+        "widget": "slider",
+        "min": 1,
+        "max": 10,
+        "step": 1
+      },
+      "bots.unlockSec": {
+        "label": "解锁最多多久（秒）",
+        "widget": "slider",
+        "min": 60,
+        "max": 1800,
+        "step": 30
+      },
+      "bots.uinPrefixes": {
+        "label": "像机器人的号段",
+        "hint": "官方机器人 3889…、老 Q 群管家 2854196…（10 位以上才算）"
+      },
+      "bots.roles": {
+        "label": "平台身份是这些就算"
+      },
+      "bots.nameWords": {
+        "label": "昵称里带这些（强）"
+      },
+      "bots.nameWeakWords": {
+        "label": "昵称里带这些（弱）"
+      },
+      "bots.botWords": {
+        "label": "别人这么叫它 = 说它是机器人"
+      },
+      "bots.botTexts": {
+        "label": "只有机器人发得出来的文字",
+        "hint": "官方机器人的 markdown 标记、图床、报错"
+      },
+      "bots.fastReplySec": {
+        "label": "被点名后几秒内就回算「秒回」"
+      },
+      "bots.commandReplySec": {
+        "label": "有人发指令后几秒内应声算「应指令」"
+      },
+      "bots.weights": {
+        "label": "各项特征的分",
+        "widget": "json"
+      },
+      "chatter": {
+        "label": "别人两个对聊",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      "maxPerMinute": {
+        "label": "每群每分钟最多开口几次",
+        "hint": "0 = 不限：节奏交给 surface-onebot 的出口节流（打字速度本身就限制了）",
+        "widget": "slider",
+        "min": 0,
+        "max": 20,
+        "step": 1
+      },
+      "tabooFactor": {
+        "label": "带低俗 / 骂战 / 政治词的话，接话概率乘",
+        "hint": "不归零：接不接是她自己的事（她纯洁善良，一般不接也不接梗，但带个脏字的正常话该接就接）。这里只决定这类话多大概率让她想一想；被 @ 时不抢着回、交给大脑",
+        "widget": "slider",
+        "min": 0.05,
+        "max": 1,
+        "step": 0.05
+      },
+      "tabooWords": {
+        "label": "算低俗 / 骂战 / 政治的词",
+        "hint": "这句或前面两分钟内别人刚说的几句里带这些就算（英文按整词认）；只用来给大脑写一行提示，不直接决定接不接"
+      },
+      "sameSenderFactor": {
+        "label": "同一个人接着说（前一句刚叫醒过她、她没接）时乘",
+        "hint": "原来是硬 0（连问只答一次）；现在只降一截，值不值得再想一下让她自己看",
+        "widget": "slider",
+        "min": 0.05,
+        "max": 1,
+        "step": 0.05
+      },
+      "temper": {
+        "label": "脾气（按人）",
+        "hint": "像真人一样：谁老拿低俗话 @ 她、反复点名、骂她、让她自证是 AI，骚扰度就往上攒（没事慢慢消）。攒到多少只是告诉大脑「有点烦 / 很烦 / 忍无可忍」，不理不理由她自己决定（动作 group.ignore）；面板「脾气（按人）」能看、能原谅"
+      },
+      "temper.enabled": {
+        "label": "开"
+      },
+      "temper.sensitivity": {
+        "label": "脾气松紧",
+        "hint": "1 平常；2 一点就着（同样的事算双倍烦）；0.5 很能忍",
+        "widget": "slider",
+        "min": 0.3,
+        "max": 3,
+        "step": 0.1
+      },
+      "temper.halfLifeMin": {
+        "label": "消气的半衰期（分钟）",
+        "widget": "slider",
+        "min": 5,
+        "max": 1440,
+        "step": 5
+      },
+      "temper.ignoreMinutes": {
+        "label": "她决定不理人但没说多久时，默认不理几分钟",
+        "widget": "slider",
+        "min": 1,
+        "max": 240,
+        "step": 1
+      },
+      "temper.ignoreMaxMinutes": {
+        "label": "不理最长几分钟",
+        "widget": "slider",
+        "min": 1,
+        "max": 1440,
+        "step": 5
+      },
+      "temper.blockHours": {
+        "label": "拉黑默认几小时",
+        "widget": "slider",
+        "min": 1,
+        "max": 168,
+        "step": 1
+      },
+      "temper.blockMaxHours": {
+        "label": "拉黑最长几小时"
+      },
+      "temper.weights": {
+        "label": "各种事算几分烦",
+        "hint": "at 被 @ / 点名、repeatAt 刚 @ 过又 @、taboo 拿低俗话冲她说、insult 骂她、callBot 让她自证 AI、burst 连着起哄、botAt 机器人 @ 她",
+        "widget": "json"
+      },
+      "temper.callBotWords": {
+        "label": "算「让她自证是 AI」的话"
+      },
+      "temper.repeatWindowSec": {
+        "hidden": true
+      },
+      "temper.burstCount": {
+        "hidden": true
+      },
+      "tabooWindowSec": {
+        "label": "前面多少秒内说过这类话也算"
+      },
+      "at.perPersonSec": {
+        "label": "同一个人连着 @ 她，多少秒内算「刚 @ 过」",
+        "hint": "答过一次后这段时间里再 @，脊椎不抢着回、交给大脑（材料里写着他今天第几次 @）；主人不受限",
+        "widget": "slider",
+        "min": 0,
+        "max": 600,
+        "step": 10
+      },
+      "sameSenderOnce": {
+        "label": "同一个人连着问只答一次"
+      },
+      "sameSenderWindowSec": {
+        "label": "连问：多少秒内算连着"
+      },
+      "focus": {
+        "label": "她正在别处说话时的系数",
+        "hint": "一次只在一个会话里",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "privateFirst": {
+        "label": "有私聊在等她时的系数",
+        "hint": "先回私聊再回群",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "privateWaitSec": {
+        "label": "私聊等她多少秒内算在等"
+      },
+      "busyActions": {
+        "label": "这些动作在跑时算「忙」"
+      },
+      "busy": {
+        "label": "忙时的接话概率",
+        "hint": "0 = 忙时群里只回 @ 她的",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "queue.enabled": {
+        "label": "排队：她在别处说话时群里找她的先排队"
+      },
+      "queue.maxWaitSec": {
+        "label": "排队最多等几秒"
+      },
+      "reading.recent": {
+        "label": "阅读窗口：平时读最近几条"
+      },
+      "reading.dense": {
+        "label": "阅读窗口：热闹时只读几条"
+      },
+      "reading.densePerMinute": {
+        "label": "阅读窗口：一分钟超过几句算热闹"
+      },
+      "reading.mentions": {
+        "label": "阅读窗口：再往前翻几条提到她的"
+      },
+      "reading.threads": {
+        "label": "阅读窗口：她最近几次开口的上下文"
+      },
+      "reading.convo": {
+        "label": "阅读窗口：正在和她聊的那段最多带几条"
+      },
+      "reading.limit": {
+        "label": "阅读窗口：最多几条",
+        "hint": "大脑与发言者在群里看的都是这个窗口"
+      },
+      "reading.pool": {
+        "label": "阅读窗口：大脑从日志里取最近几条来挑"
+      },
+      "reading.people": {
+        "label": "在场的人：最多列几个",
+        "hint": "对话窗口里出现的人各是谁（主人 / 机器人 / 正在和她聊 / 她对他烦不烦）、最近说了几句、窗口里没带上的更早的话"
+      },
+      "reading.earlier": {
+        "label": "在场的人：每人带几句窗口里没带上的话",
+        "widget": "slider",
+        "min": 0,
+        "max": 5,
+        "step": 1
+      },
+      "reading.peopleWindowSec": {
+        "label": "在场的人：数多久以内说的话（秒）"
+      },
+      "phone.windowSec": {
+        "label": "通知栏：多少秒内有动静的会话"
+      },
+      "phone.lines": {
+        "label": "通知栏：每个会话显示几句"
+      },
+      "phone.max": {
+        "label": "通知栏：最多几个会话"
+      },
+      "channelPrefixes": {
+        "label": "哪些频道算群",
+        "hidden": true
+      },
+      "kinds": {
+        "hidden": true
+      },
+      "names": {
+        "label": "她的名字（阅读窗口认「提到她」用）"
+      },
+      "chatterWindow": {
+        "hidden": true
+      },
+      "chatterWindowSec": {
+        "hidden": true
+      },
+      "keep": {
+        "hidden": true
+      },
+      "topic": {
+        "label": "话题生命周期",
+        "hint": "她接话就开一个话题；话题开着时她可以主动接（看下面的「话题内主动」）；聊完（没人接 / 对方收尾 / 换话题）就收尾，收尾后不再因为「接她的话」被叫醒"
+      },
+      "topic.enabled": {
+        "label": "开"
+      },
+      "topic.maxTurns": {
+        "label": "一个话题她最多主动接几轮（安全上限）",
+        "hint": "回 @ 她的、回正在和她聊的人的不算；平时靠「话题内主动」的衰减自然收住，这里只防没完没了",
+        "widget": "slider",
+        "min": 1,
+        "max": 12,
+        "step": 1
+      },
+      "topic.inTopic": {
+        "label": "在聊：她参与的话题还在聊时的接话概率",
+        "hint": "别人在她参与的话题里说了新东西，她可以追问、补一句、笑一下；和「接她刚才的话」「还在聊她参与的话题」取最高，每主动接一轮乘一次衰减",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "topic.interestInTopic": {
+        "label": "话题内主动（兴趣话题）",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "topic.inTopicDecay": {
+        "label": "话题内主动：每接一轮乘",
+        "widget": "slider",
+        "min": 0.3,
+        "max": 1,
+        "step": 0.05
+      },
+      "convo": {
+        "label": "正在对话",
+        "hint": "她回了某人、或某人 @ 了她，就和那人聊着：对方接着说的话不用 @ 也按「在聊」打分（起点就是 followUp，她每多接一句乘 topic.inTopicDecay，对方连说六句她接一到三句；主人也一样，在跟别人说就不算）"
+      },
+      "convo.enabled": {
+        "label": "开"
+      },
+      "convo.idleSec": {
+        "label": "多久没人续算聊完（秒）",
+        "widget": "slider",
+        "min": 30,
+        "max": 600,
+        "step": 10
+      },
+      "convo.offAfter": {
+        "label": "对方连续几句在跟别人说算聊完",
+        "widget": "slider",
+        "min": 1,
+        "max": 5,
+        "step": 1
+      },
+      "convo.maxUnanswered": {
+        "label": "对方连说几句她都没接算聊完",
+        "widget": "slider",
+        "min": 1,
+        "max": 8,
+        "step": 1
+      },
+      "convo.chatterMaxChars": {
+        "label": "无关闲话最多几个字",
+        "hint": "对方说的不超过这么多字、不是问句、和这段对话没有共有的词（「摸鱼中」「困死了」）就不算在跟她说：人还在、对话不断，这句交给普通打分",
+        "widget": "slider",
+        "min": 0,
+        "max": 12,
+        "step": 1
+      },
+      "topic.replyWindowSec": {
+        "label": "她说完多久没人接算结束（秒）",
+        "widget": "slider",
+        "min": 20,
+        "max": 600,
+        "step": 10
+      },
+      "topic.switchAfter": {
+        "label": "连续几句不相关算换话题",
+        "widget": "slider",
+        "min": 1,
+        "max": 10,
+        "step": 1
+      },
+      "topic.minOverlap": {
+        "label": "算「相关」至少共有几个双字词",
+        "widget": "slider",
+        "min": 1,
+        "max": 6,
+        "step": 1
+      },
+      "topic.closers": {
+        "label": "收束句",
+        "hint": "话题里的人说了这些（整句，或很短且以它开头）就算聊完了"
+      },
+      "topic.closerMaxChars": {
+        "label": "收束句最长几个字",
+        "widget": "slider",
+        "min": 2,
+        "max": 12,
+        "step": 1
+      },
+      "topic.quietSec": {
+        "label": "收尾后安静多久（秒）",
+        "hint": "这段时间里碰着旧话题的话不再接",
+        "widget": "slider",
+        "min": 60,
+        "max": 3600,
+        "step": 30
+      },
+      "topic.afterClose": {
+        "label": "收尾后碰着旧话题的接话概率",
+        "widget": "slider",
+        "min": 0,
+        "max": 0.3,
+        "step": 0.01
+      },
+      "rates": {
+        "label": "每群倍率",
+        "hint": "「qq:group:群号」→ 倍率：0 只在被 @ 时说话，0.5 少说点，1 正常，1.5 多说点；面板按钮、/freq set、她自己（group.rate）都改这里"
+      },
+      "affinity": {
+        "label": "好感（自动）",
+        "hint": "她在群里说话有人接、被 @ 往上；说完没人接、被怼往下；没事时慢慢回到 1"
+      },
+      "affinity.enabled": {
+        "label": "开"
+      },
+      "affinity.caught": {
+        "label": "说话被接住 +",
+        "widget": "slider",
+        "min": 0,
+        "max": 0.2,
+        "step": 0.01
+      },
+      "affinity.mentioned": {
+        "label": "被 @ / 叫名字 +",
+        "widget": "slider",
+        "min": 0,
+        "max": 0.2,
+        "step": 0.01
+      },
+      "affinity.ignored": {
+        "label": "说完没人接（负数）",
+        "widget": "slider",
+        "min": -0.2,
+        "max": 0,
+        "step": 0.01
+      },
+      "affinity.insulted": {
+        "label": "被怼（负数）",
+        "widget": "slider",
+        "min": -0.5,
+        "max": 0,
+        "step": 0.01
+      },
+      "affinity.insultWords": {
+        "label": "算「被怼」的词",
+        "hint": "冲她说的话（@ / 叫名字）里带这些"
+      },
+      "affinity.replyWindowSec": {
+        "label": "说完多久内有人接算「接住」（秒）",
+        "widget": "slider",
+        "min": 30,
+        "max": 600,
+        "step": 10
+      },
+      "affinity.halfLifeDays": {
+        "label": "好感回到中性的半衰期（天）",
+        "widget": "slider",
+        "min": 0.5,
+        "max": 30,
+        "step": 0.5
+      },
+      "affinity.min": {
+        "label": "好感下限",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "affinity.max": {
+        "label": "好感上限",
+        "widget": "slider",
+        "min": 1,
+        "max": 3,
+        "step": 0.05
+      },
+      "mood": {
+        "label": "心情（emotion）",
+        "hint": "相对平时：开心 / 兴奋就多说，低落就少说"
+      },
+      "mood.enabled": {
+        "label": "开"
+      },
+      "mood.valence": {
+        "label": "愉悦度的影响",
+        "widget": "slider",
+        "min": 0,
+        "max": 2,
+        "step": 0.05
+      },
+      "mood.arousal": {
+        "label": "兴奋度的影响",
+        "widget": "slider",
+        "min": 0,
+        "max": 2,
+        "step": 0.05
+      },
+      "mood.baseValence": {
+        "label": "平时的愉悦度",
+        "widget": "slider",
+        "min": -1,
+        "max": 1,
+        "step": 0.05
+      },
+      "mood.baseArousal": {
+        "label": "平时的兴奋度",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "mood.min": {
+        "label": "心情系数下限",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "mood.max": {
+        "label": "心情系数上限",
+        "widget": "slider",
+        "min": 1,
+        "max": 3,
+        "step": 0.05
+      },
+      "interest": {
+        "label": "她感兴趣的",
+        "hint": "兴趣表在 interests 插件（她自己维护）；这句离她的兴趣越近、那条兴趣分越高，接话概率乘得越多，兴趣话题里也能多接几轮"
+      },
+      "interest.k": {
+        "label": "兴趣乘法系数 k",
+        "hint": "接话概率 × (1 + k × 感兴趣程度)：k 3 = 满分兴趣乘 4 倍（上限 1）；0 = 兴趣不影响接不接",
+        "widget": "slider",
+        "min": 0,
+        "max": 4,
+        "step": 0.1
+      },
+      "at": {
+        "label": "被 @ / 叫名字时",
+        "hint": "不是 100% 必答：接的概率 = 基础 × (好感 × 心情)^敏感度。平时约 0.95；烦的群 + 心情差会低很多，没接的交给大脑决定敷衍一句还是不回。主人除外"
+      },
+      "at.base": {
+        "label": "被 @ 时接的基础概率",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      "at.sensitivity": {
+        "label": "受好感与心情影响的程度",
+        "hint": "0 = 不受影响（@ 必答），1 = 按比例打折，越大越任性",
+        "widget": "slider",
+        "min": 0,
+        "max": 3,
+        "step": 0.1
+      },
+      "feel": {
+        "label": "想不想聊的分界",
+        "hint": "此刻意愿低于「懒得理」线就跟大脑说懒得理，高于「想聊」线就说想聊"
+      },
+      "feel.coldBelow": {
+        "label": "懒得理（意愿低于）",
+        "widget": "slider",
+        "min": 0,
+        "max": 0.5,
+        "step": 0.01
+      },
+      "feel.warmAbove": {
+        "label": "想聊（意愿高于）",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      "owners": {
+        "label": "主人（补充）",
+        "hint": "@ 她必答的号；会和 guard 插件的「主人」并在一起。写 qq:号 或直接写号"
+      },
+      "topic.interestMaxTurns": {
+        "label": "兴趣话题最多主动接几轮",
+        "hint": "聊到她感兴趣的可以连着聊",
+        "widget": "slider",
+        "min": 1,
+        "max": 10,
+        "step": 1
+      },
+      "topic.cooldownSec": {
+        "label": "话题刚收尾后缓多久（秒）",
+        "hint": "这段时间里别人开的新话题也先少接",
+        "widget": "slider",
+        "min": 0,
+        "max": 600,
+        "step": 10
+      },
+      "topic.cooldownFactor": {
+        "label": "缓的时候接话概率乘",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      "at.onceSec": {
+        "label": "不招喜欢的群：回过一次 @ 后多久内不再理（秒）",
+        "hint": "接 @ 的概率低于下面那条线的群，她回过一次 @（不管是想接还是敷衍）之后，这段时间里再被 @ 就不理了",
+        "widget": "slider",
+        "min": 0,
+        "max": 1800,
+        "step": 30
+      },
+      "at.onceBelow": {
+        "label": "算「不招喜欢」的线（接 @ 的概率低于）",
+        "widget": "slider",
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      }
+    }
+  }
+}

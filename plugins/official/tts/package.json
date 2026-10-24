@@ -1,0 +1,22 @@
+{
+  "name": "@mumu/tts",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "语音合成：OpenAI 兼容 /v1/audio/speech，密钥按名字取",
+  "mumu": {
+    "enabled": true,
+    "order": 5,
+    "description": "语音合成（tts 服务）：OpenAI 兼容 /v1/audio/speech 协议，服务商由配置决定；没配 baseURL 时为未就绪",
+    "defaults": {
+      "baseURL": "https://api.siliconflow.cn/v1",
+      "model": "FunAudioLLM/CosyVoice2-0.5B",
+      "voice": "FunAudioLLM/CosyVoice2-0.5B:anna",
+      "format": "mp3",
+      "speed": 1.0,
+      "apiKeyRef": "tts"
+    }
+  }
+}

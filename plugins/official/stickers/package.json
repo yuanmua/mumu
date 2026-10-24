@@ -1,0 +1,110 @@
+{
+  "name": "@mumu/stickers",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "表情包：库（群里收 / 网上找 / 手放）、看图审核、按她的状态决定发不发、库里没有就联网找；QQ 经 stickers 服务发，网页挂进那条发言",
+  "mumu": {
+    "enabled": true,
+    "order": 5,
+    "title": "表情包",
+    "description": "表情包库与审核：对方要就发、平时按心情偶尔发、不连发；库里没有合适的按描述联网找（360 图片搜索 / 发表情），vision.read 审核通过才入库；服务 stickers 给 QQ 表现端用；面板「表情包库」、状态卡、/stickers",
+    "defaults": {
+      "dir": "data/stickers",
+      "mediaDir": "data/media",
+      "max": 500,
+      "maxContexts": 5,
+      "collect": true,
+      "learn": true,
+      "teachTags": 16,
+      "chance": 0.5,
+      "emoChance": 0.15,
+      "minGapSec": 120,
+      "heatWindowSec": 180,
+      "seriousChars": 60,
+      "askPatterns": [
+        "(发|来|整|甩|丢|给我|再来|再发)(?![的了过])[^，,。！!？?]{0,10}(表情|斗图|动图)",
+        "(发|来|整|甩)(个|张|一张|几张|点)图",
+        "斗图"
+      ],
+      "searchOn": "explicit",
+      "selfServed": [
+        "qq:"
+      ],
+      "recheck": true,
+      "review": {
+        "role": "vision.read",
+        "maxChars": 12,
+        "timeoutMs": 45000,
+        "rules": [
+          "色情、擦边、裸露或性暗示",
+          "暴力、血腥、恐怖、自残、虐待动物",
+          "政治人物、国家领导人、政党 / 国旗 / 军队 / 宗教等敏感符号，或时政话题",
+          "真人照片（明星、网红、路人、自拍），或可能泄露隐私的内容（证件、聊天记录、手机号、住址、车牌）",
+          "广告、二维码、联系方式、网址，或明显的网站水印、商标",
+          "辱骂、歧视、低俗、违法违规的文字",
+          "任何形式的截图（聊天记录、视频、网页、游戏、电视画面）"
+        ],
+        "blockWords": [
+          "色情", "裸", "黄图", "擦边", "福利姬", "约炮", "成人",
+          "血腥", "尸体", "自杀", "自残", "毒品", "赌博", "博彩",
+          "政治", "领导人", "主席", "总统", "国旗", "党旗", "军装",
+          "二维码", "加微信", "加QQ", "代理", "广告"
+        ]
+      },
+      "search": {
+        "enabled": true,
+        "providers": [
+          "so360",
+          "fabiaoqing"
+        ],
+        "perSearch": 3,
+        "perHour": 20,
+        "timeoutMs": 10000,
+        "budgetMs": 40000,
+        "maxBytes": 2000000,
+        "suffix": "表情包"
+      }
+    },
+    "ui": {
+      "dir": { "label": "表情包目录", "hint": "相对后端工作目录；index.json 记每张的标签、来源、审核结论" },
+      "mediaDir": { "label": "媒体目录", "hint": "网页对话里显示她发的表情包用（与 surface-web 的 media 同一处）" },
+      "max": { "label": "最多收几张" },
+      "collect": { "label": "收群友发的表情包", "hint": "收下后先审核，过了才会发" },
+      "learn": { "label": "学用法", "hint": "记下群友在什么话后面发它，挑图时参考" },
+      "teachTags": { "label": "教给她的常用标签数" },
+      "chance": { "label": "她自己写表情包时发的基础概率", "hint": "再乘心情、热度等系数；对方要的时候一定发", "widget": "slider", "min": 0, "max": 1, "step": 0.05 },
+      "emoChance": { "label": "她只写了表情时顺手配一张的基础概率", "widget": "slider", "min": 0, "max": 1, "step": 0.05 },
+      "minGapSec": { "label": "同一会话两张至少隔（秒）", "hint": "对方要的时候不受限", "widget": "slider", "min": 0, "max": 900, "step": 10 },
+      "heatWindowSec": { "label": "算「聊得热」看最近几秒" },
+      "seriousChars": { "label": "她一句说到这么多字就不配图", "hint": "在认真说事" },
+      "askPatterns": { "label": "「对方在要表情包」的说法", "hint": "正则，匹配对方原话；匹配上就一定发" },
+      "searchOn": {
+        "label": "什么时候联网找",
+        "widget": "select",
+        "options": [
+          { "value": "explicit", "label": "她明说要发、或对方要的时候" },
+          { "value": "asked", "label": "只在对方要的时候" },
+          { "value": "never", "label": "不联网" }
+        ]
+      },
+      "selfServed": { "label": "自己发表情包的表现端", "hint": "这些频道前缀由表现端经 stickers 服务发（QQ），其余频道这里把图挂进网页对话" },
+      "recheck": { "label": "后台按新规则重审旧的" },
+      "review.role": { "label": "审核用的模型角色", "hint": "要能看图（provider 里绑定）" },
+      "review.maxChars": { "label": "图上的字最多几个" },
+      "review.timeoutMs": { "label": "审核一张的时限（毫秒）" },
+      "review.rules": { "label": "不合适的标准", "hint": "沾上任意一条就不入库、不发；整份替换" },
+      "review.blockWords": { "label": "禁词", "hint": "描述、搜索词、网上标题里有就不要（模型漏报时的兜底）" },
+      "search.enabled": { "label": "联网找图" },
+      "search.providers": { "label": "来源（按顺序试）", "hint": "so360 = 360 图片搜索，fabiaoqing = 发表情网；一个不行换下一个" },
+      "search.perSearch": { "label": "每次最多看几张" },
+      "search.perHour": { "label": "每小时最多找几次" },
+      "search.timeoutMs": { "label": "单个请求超时（毫秒）" },
+      "search.budgetMs": { "label": "找一次最多花多久（毫秒）" },
+      "search.maxBytes": { "label": "一张图最大字节数" },
+      "search.suffix": { "label": "搜索词后面补什么", "hint": "图片搜索用，让结果偏向表情包" }
+    }
+  }
+}

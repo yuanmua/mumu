@@ -1,0 +1,33 @@
+{
+  "name": "@mumu/action-image",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "image / screenshot 动作：把她电脑里的一张图片、或她桌面此刻的样子发进当前对话",
+  "mumu": {
+    "enabled": true,
+    "order": 0,
+    "title": "发图片",
+    "description": "image 动作：把她电脑里的一张图片发进对话；screenshot 动作：截她桌面直接发（只听主人的）。Part kind 'image'，文件拷进媒体目录按内容摘要命名，网页经 /api/media 显示，QQ 发成图片消息",
+    "ui": {
+      "dir": { "label": "媒体目录", "hint": "相对后端工作目录；要和 surface-web 的「图片消息目录」一致" },
+      "maxMB": { "label": "单张上限（MB）", "min": 1, "max": 50 },
+      "bodyUrl": { "label": "身体服务地址", "hint": "截桌面、取后端本机没有的图片用；和「电脑身体」的地址一致" },
+      "bodyTokenSecret": { "label": "身体服务 token 的密钥名", "hint": "身体服务没开 token 留空" },
+      "imageMax": { "label": "经身体服务取图时长边像素", "widget": "slider", "min": 512, "max": 4096, "step": 128 },
+      "shotScale": { "label": "截桌面缩放", "hint": "1 = 原尺寸", "widget": "slider", "min": 0.25, "max": 1, "step": 0.05 },
+      "shotQuality": { "label": "截桌面 JPEG 质量", "widget": "slider", "min": 40, "max": 100, "step": 5 }
+    },
+    "defaults": {
+      "dir": "data/media",
+      "maxMB": 15,
+      "bodyUrl": "http://127.0.0.1:8765",
+      "bodyTokenSecret": "",
+      "imageMax": 2048,
+      "shotScale": 1,
+      "shotQuality": 85
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@mumu/bench",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "测试工具：按模型角色统计调用与 token、估算费用；「裁判」角色给她的发言打像不像真人的分。只给压测脚本用，平时可停用",
+  "mumu": {
+    "title": "压测工具",
+    "enabled": true,
+    "order": 0,
+    "description": "测试工具（scripts/replay.ts 用）：/api/bench/usage 按角色统计调用次数、输入 / 输出 token、估算缓存命中、耗时；/api/bench/judge 用 bench.judge 角色给发言打分并列翻车点；/bench",
+    "defaults": {
+      "judgeRole": "bench.judge",
+      "charsPerToken": 1.6
+    },
+    "ui": {
+      "judgeRole": { "label": "裁判用的模型角色" },
+      "charsPerToken": { "label": "估算缓存命中时每 token 约几个字" }
+    }
+  }
+}

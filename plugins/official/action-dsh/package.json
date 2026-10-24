@@ -1,0 +1,43 @@
+{
+  "name": "@mumu/action-dsh",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "dsh 动作：在她自己的电脑里起 DeepSeek Harness 干多步工程活（写代码、在工作目录里搭东西）",
+  "mumu": {
+    "enabled": true,
+    "order": 0,
+    "title": "DSH 工程活",
+    "description": "dsh 动作（需要主人）：在她的 Windows 里非交互起 DSH（dsh --profile headless --json，默认 workspace-write 沙箱），每步一句人话进 a.note / dsh.step，「手头的活」给导演与发言者，动手 / 出错发 dsh.progress、完成发 dsh.result；碰系统的命令当场拦停要主人点头；总时限 / 静默时限 / 急停杀整棵进程树；同时只跑一个；网页「DSH 任务」面板与状态卡；/dsh、/dsh stop",
+    "ui": {
+      "entry": { "label": "DSH 入口脚本", "hint": "留空 = 自动找全局安装的 @deepseek-ai/dsh（%APPDATA%\\npm\\node_modules）" },
+      "keySecret": { "label": "密钥名", "hint": "secrets 里 DeepSeek 密钥的名字，作为 DEEPSEEK_API_KEY 交给 DSH 子进程（不落文件）" },
+      "workDir": { "label": "默认工作目录", "hint": "任务没给 cwd 时用；留空 = 她主目录下的 dsh-work。沙箱下它只能写这个目录" },
+      "sandbox": { "label": "沙箱", "widget": "select", "options": [
+        { "value": "workspace-write", "label": "只能写工作目录（推荐）" },
+        { "value": "read-only", "label": "只读" },
+        { "value": "danger-full-access", "label": "不限制（危险，装软件 / 改系统才需要）" }
+      ], "hint": "DSH 自带的 Windows 受限令牌沙箱；护栏拦截照样生效" },
+      "timeoutMin": { "label": "总时限（分钟）", "min": 1, "max": 120 },
+      "idleSec": { "label": "静默时限（秒）", "hint": "这么久没有任何新进展就当卡住（多半在等人确认），杀掉并回报", "min": 30, "max": 1800 },
+      "concurrency": { "label": "同时最多几个", "min": 1, "max": 3 },
+      "resultChars": { "label": "结果摘要上限（字）", "min": 200, "max": 6000 },
+      "progressGapSec": { "label": "进度播报最短间隔（秒）", "hint": "「出错了在换办法」这类进度最多多久说一次，免得刷屏；「动手了」不受限", "min": 10, "max": 600 },
+      "preamble": { "label": "交给 DSH 的约定", "widget": "textarea", "hint": "拼在每个任务前面" }
+    },
+    "defaults": {
+      "entry": "",
+      "keySecret": "deepseek",
+      "workDir": "",
+      "sandbox": "workspace-write",
+      "timeoutMin": 20,
+      "idleSec": 300,
+      "concurrency": 1,
+      "resultChars": 1500,
+      "progressGapSec": 90,
+      "preamble": "你在沐沐自己的 Windows 11 电脑上干活（她是一个数字角色，这台电脑归她用）。约定：\n- 不会有人回答你的问题：需要人决定、需要账号密码或付费的，直接停下，在最终回答里说清卡在哪。\n- 只在工作目录里干活，不碰系统：不对系统进程（csrss、winlogon、lsass、services、svchost 等）做任何操作，不用 WMI / CIM，不用 Add-Type 调 Win32 API，不建计划任务或服务，不改 HKLM 注册表、防火墙、账户、执行策略，不关机重启。需要这些才能完成的，直接停下说明。\n- 每次调用工具都用中文写一句 description，说这一步在干嘛（旁人靠它看进度，别写命令原文）。\n- 用 pwsh。PATH 上的 python 可能是商店占位符，先找真正的解释器（如 %LOCALAPPDATA%\\Programs\\Python\\Python3*\\python.exe）。\n- 不开任何窗口、不截屏：不用 Start-Process / explorer / pythonw / Invoke-Item / cmd start / 快捷方式去启动程序，不用 System.Windows.Forms / System.Drawing，不调 127.0.0.1:8765。看画面、开窗口、玩都是她自己的事。你只写代码、装工作目录里的依赖、跑命令行自测（比如给程序加一个 --self-test 参数只跑逻辑不开窗口），在总结里写清完整的启动命令，她会自己打开。\n- 最后用中文简要总结：做了什么、文件在哪、怎么启动 / 运行、有没有没做成的。\n\n任务："
+    }
+  }
+}

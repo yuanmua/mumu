@@ -1,0 +1,15 @@
+{
+  "name": "@mumu/clock",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "时间感：现在几点、星期几、聊了多久、对方多久没说话",
+  "mumu": {
+    "enabled": true,
+    "order": 0,
+    "description": "时间感：给导演与发言者一段「现在是…」，含对方沉默时长；没有它角色会在下午说「这么晚了」",
+    "defaults": { "locale": "zh-CN", "timeZone": "Asia/Shanghai" }
+  }
+}

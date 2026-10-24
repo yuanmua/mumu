@@ -1,0 +1,49 @@
+{
+  "name": "@mumu/reflex",
+  "version": "0.3.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "脊椎：不抢先开口；合流、硬闸、给大脑贴提示，大脑想太久时替简单招呼兜底",
+  "mumu": {
+    "enabled": true,
+    "order": 0,
+    "title": "脊椎（兜底秒回）",
+    "description": "脊椎：每条消息先交给大脑（大脑门控），脊椎不抢先开口；私聊合流、给大脑贴提示（像要她做事 / 主人说的 / 很简单可 quick）；白名单里的招呼大脑 2.5 秒没决定就先应一声；硬闸保证同频道只有一个 reply、她说话时别处不开口（一次只在一个会话里）",
+    "defaults": {
+      "delayMs": 350,
+      "kinds": ["message"],
+      "groupPrefixes": ["qq:group:"],
+      "lightMaxChars": 4,
+      "stickerPrefix": "[表情包",
+      "thinkDelayMs": 800,
+      "burstGapMs": 4000,
+      "burstDelayMs": 1800,
+      "lightCooldownMs": 10000,
+      "lightReplyChance": 0.85,
+      "fallbackMs": 2500,
+      "quickGuardKinds": ["message", "group.message", "message.queued"],
+      "reportKinds": ["computer.result", "dsh.result", "extend.result"],
+      "burstHint": true,
+      "actionWords": ["截图", "截屏", "截个图", "截张图", "截一下", "搜", "找一张", "找张", "找个图", "找点图", "发图", "发张", "发个图", "发一张", "发群里", "发到群", "发过来", "打开", "下载", "安装", "查一下", "查查", "查个", "帮我", "帮忙", "你电脑", "桌面", "播放", "放首", "放个", "关掉", "删掉", "删了", "装个", "运行", "用电脑", "电脑上", "算算", "算一下", "计算", "验证", "试试看", "试一下", "跑一下", "写个", "做个", "去弄"]
+    },
+    "ui": {
+      "fallbackMs": { "label": "大脑没决定时多久兜底（毫秒）", "hint": "简单招呼（表情包、嗯、在吗）大脑这么久还没决定，脊椎先应一声；0 = 不兜底，只等大脑", "widget": "slider", "min": 0, "max": 10000, "step": 250 },
+      "delayMs": { "label": "轻消息合流（毫秒）", "hint": "私聊里表情包、嗯、好、在吗这类，停这么久就叫醒大脑", "widget": "slider", "min": 100, "max": 2000, "step": 50 },
+      "lightMaxChars": { "label": "简单招呼最多几个字", "hint": "不带问号、去掉表情包后不超过这么多字才可能兜底；0 = 只有纯表情包", "widget": "slider", "min": 0, "max": 20, "step": 1 },
+      "thinkDelayMs": { "label": "要想的话先等多久（毫秒）", "hint": "私聊里问句、长句：等这么久再叫大脑，对方可能还在打字", "widget": "slider", "min": 0, "max": 5000, "step": 100 },
+      "burstGapMs": { "label": "连发判定（毫秒）", "hint": "和对方上一句隔这么近算连发；连发的不兜底，交给大脑一次回完", "widget": "slider", "min": 0, "max": 15000, "step": 500 },
+      "burstDelayMs": { "label": "连发合流（毫秒）", "hint": "对方连发时，停下这么久才算说完", "widget": "slider", "min": 300, "max": 6000, "step": 100 },
+      "lightCooldownMs": { "label": "刚说过话的冷却（毫秒）", "hint": "她这么久之内刚开过口，简单招呼也不兜底（交给大脑，常常就不接了）", "widget": "slider", "min": 0, "max": 60000, "step": 1000 },
+      "lightReplyChance": { "label": "兜底概率", "hint": "没掷中就只等大脑；1 = 都兜底", "widget": "slider", "min": 0, "max": 1, "step": 0.05 },
+      "burstHint": { "label": "连发时提醒一起回", "hint": "对方连发了几条，告诉发言者看完一次回完" },
+      "groupPrefixes": { "label": "不合流的频道前缀", "hint": "这些频道（群）的消息即时叫醒大脑" },
+      "stickerPrefix": { "label": "表情包占位写法", "hint": "表现端把表情包写成「[表情包…]」；去掉这种片段后什么都不剩就算纯表情包" },
+      "kinds": { "label": "哪些感知算对话消息" },
+      "reportKinds": { "label": "算「动作结果」的感知", "hint": "和「发言」里的同名设置一致：汇报这类结果的回复被正在说的话拦下时记着，说完那拍提醒大脑补上" },
+      "quickGuardKinds": { "label": "快回把关看哪些感知", "hint": "大脑放行了快回（quick），但对方最近一句（这些 kind 里的）像是要她做事（含「像要她做事」的词）：降成正常回复，免得一个「好」把事打发了。不按字数降：大脑写了 quick 就以大脑为准" },
+      "actionWords": { "label": "「像要她做事」的词", "hint": "只是给大脑的提示（并且这些话不兜底）；话都由大脑决定怎么回、做不做。guard 也用它认是谁让她做的" }
+    }
+  }
+}

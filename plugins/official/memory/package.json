@@ -1,0 +1,51 @@
+{
+  "name": "@mumu/memory",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "长期记忆（按人组织）：中期摘要 + 人物印象 + 群印象，开口前按会话与对象召回，群里的私事不往别处说",
+  "mumu": {
+    "title": "长期记忆",
+    "enabled": true,
+    "order": 0,
+    "description": "长期记忆：听 log.appended 攒对话，memory.summarize 压成中期摘要 + 人物印象 / 事实 + 群印象（mem_* 表）；reply/prompt 召回「你记得的」（按来源过滤）；beat/gather 给导演一句话印象；/memory",
+    "defaults": {
+      "botName": "沐沐",
+      "ownerName": "主人",
+      "role": "memory.summarize",
+      "groupPrefixes": ["qq:group:"],
+      "webChannels": ["main", "c:"],
+      "aliases": {},
+      "chunk": 30,
+      "groupChunk": 60,
+      "minTurns": 6,
+      "idleSec": 300,
+      "checkSec": 20,
+      "maxFacts": 20,
+      "recallChars": 1400,
+      "recallEpisodes": 4,
+      "recallPeople": 8,
+      "timeZone": "Asia/Shanghai"
+    },
+    "ui": {
+      "botName": { "label": "她的名字（写进整理记忆的提示词）" },
+      "ownerName": { "label": "网页用户叫什么", "hint": "网页对话里的人默认是主人" },
+      "role": { "label": "整理记忆用的模型角色", "hint": "在 provider-openai 的 roles 里绑定；没绑就走 default" },
+      "aliases": { "label": "同一个人的不同号", "hint": "把主人的 QQ 号并到网页用户上：{\"qq:12345\": \"web:web-user\"}", "widget": "json" },
+      "chunk": { "label": "单聊攒几条整理一次" },
+      "groupChunk": { "label": "群聊攒几条整理一次" },
+      "minTurns": { "label": "安静下来时至少攒了几条才整理" },
+      "idleSec": { "label": "安静多少秒算聊完一段" },
+      "checkSec": { "label": "多少秒看一次要不要整理" },
+      "maxFacts": { "label": "每个人最多记几件事" },
+      "recallChars": { "label": "开口前最多想起多少字" },
+      "recallEpisodes": { "label": "开口前最多想起几段摘要" },
+      "recallPeople": { "label": "最多想起几个人", "hint": "对话窗口里说过话的人（最后说话的在前）都想一想是谁：印象 + 这里能说的事；大脑与发言者都是" },
+      "timeZone": { "label": "时区" },
+      "groupPrefixes": { "hidden": true },
+      "webChannels": { "hidden": true }
+    }
+  }
+}

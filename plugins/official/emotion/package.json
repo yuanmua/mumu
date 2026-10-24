@@ -1,0 +1,15 @@
+{
+  "name": "@mumu/emotion",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "情绪状态：随对话演化、随时间回落，喂给发言者与导演，并告诉舞台",
+  "mumu": {
+    "enabled": true,
+    "order": 0,
+    "description": "情绪状态（emotion 服务）：从自己说出的表情标记与对话节奏演化，随时间回落；贡献发言段落与导演材料；变化落日志供舞台投影",
+    "defaults": { "decayEveryMs": 20000, "baseline": { "valence": 0.25, "arousal": 0.45 } }
+  }
+}

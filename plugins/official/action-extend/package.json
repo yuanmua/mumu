@@ -1,0 +1,27 @@
+{
+  "name": "@mumu/action-extend",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "extend 动作：她给自己加简单的新功能——写用户插件、类型检查、装上，坏了照报错改",
+  "mumu": {
+    "title": "给自己加功能",
+    "enabled": true,
+    "order": 0,
+    "description": "extend 动作（需要主人）：task.agent 按插件契约写 plugins/user/<name>/，护栏（只写 user、只 import src/index.ts、不加依赖）→ npm run check → loader.scan 装上；出错把报错喂回去改；结果以 extend.result 唤醒导演；/extend",
+    "defaults": {
+      "role": "task.agent",
+      "userDir": "plugins/user",
+      "maxFixes": 3,
+      "checkTimeoutSec": 240
+    },
+    "ui": {
+      "role": { "label": "写代码用的模型角色", "hint": "在 provider-openai 的 roles 里绑定" },
+      "userDir": { "label": "她的插件放在哪", "hidden": true },
+      "maxFixes": { "label": "最多照报错改几次", "widget": "slider", "min": 0, "max": 6, "step": 1 },
+      "checkTimeoutSec": { "label": "类型检查最多等几秒" }
+    }
+  }
+}

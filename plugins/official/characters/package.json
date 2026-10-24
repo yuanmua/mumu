@@ -1,0 +1,17 @@
+{
+  "name": "@mumu/characters",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "角色包：人设 + 舞台 + 声音打包成一个目录，一条命令整体切换",
+  "mumu": {
+    "enabled": true,
+    "order": 0,
+    "description": "角色包（/character list|use）：把 persona、舞台（live2d / tachie）、tts 声音打包成 characters/<id>/character.json，切换时写进对应插件的配置；向 web/meta 报舞台信息",
+    "defaults": {
+      "dir": "characters"
+    }
+  }
+}

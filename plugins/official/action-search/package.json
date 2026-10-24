@@ -1,0 +1,51 @@
+{
+  "name": "@mumu/action-search",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "search 动作：查资料、看新闻、找图直接调搜索 API（网页 / 新闻 DeepSeek，图片 360），不开电脑浏览器",
+  "mumu": {
+    "enabled": true,
+    "order": 0,
+    "title": "搜索",
+    "description": "search 动作：{query, kind: web | news | image, count}。网页 / 新闻调 DeepSeek 官方 Search API（与对话共用 DeepSeek 密钥），图片必应 + 360 并行、下载到本地并用看图模型过一眼（只留对得上的，全对不上叫她换词再搜）；结果以 search.result 感知唤醒大脑并进工作记忆，搜到的图接 image 动作发出。谁请求都可以搜；状态卡「搜索」；/search",
+    "ui": {
+      "provider": { "label": "网页 / 新闻来源", "widget": "select", "options": [
+        { "value": "deepseek", "label": "DeepSeek Search API" }
+      ] },
+      "endpoint": { "label": "搜索接口地址", "hint": "留空 = 该来源的默认地址（DeepSeek：https://api.deepseek.com/v1/tools/search）" },
+      "apiKeyRef": { "label": "密钥名", "hint": "secrets 里搜索密钥的名字。DeepSeek 搜索与对话同一个密钥，默认就用对话的「deepseek」；要单独一个就写别的名字，再用 /secret set <名字> <key> 或网页「密钥」填" },
+      "imageProviders": { "label": "图片来源", "hint": "几家并行搜、合在一起看图挑：bing（必应图片）、so360（360 图片搜索），都不要密钥" },
+      "count": { "label": "网页 / 新闻默认几条", "min": 1, "max": 10 },
+      "imageCount": { "label": "图片默认几张", "min": 1, "max": 6 },
+      "timeoutMs": { "label": "搜索请求时限（毫秒）", "min": 2000, "max": 60000 },
+      "imageBudgetMs": { "label": "下载图片 + 看图时限（毫秒）", "min": 5000, "max": 120000 },
+      "newsDays": { "label": "新闻只要最近几天的", "min": 1, "max": 60 },
+      "snippetChars": { "label": "每条摘要最多几个字", "min": 40, "max": 600 },
+      "look": { "label": "发图前看一眼", "hint": "搜来的图交看图模型说图里是什么、扔掉不合适发群的；关掉则只有网页标题" },
+      "lookRules": { "label": "不能发的图", "hint": "看图时沾上任何一条就扔掉" },
+      "dir": { "label": "图片下载目录", "hint": "相对后端工作目录；image 动作从这里读" },
+      "keep": { "label": "下载目录最多留几张", "min": 20, "max": 2000 },
+      "maxMB": { "label": "单张图上限（MB）", "min": 1, "max": 15 }
+    },
+    "defaults": {
+      "provider": "deepseek",
+      "endpoint": "",
+      "apiKeyRef": "deepseek",
+      "imageProviders": ["bing", "so360"],
+      "count": 5,
+      "imageCount": 3,
+      "timeoutMs": 15000,
+      "imageBudgetMs": 30000,
+      "newsDays": 7,
+      "snippetChars": 160,
+      "look": true,
+      "lookRules": ["色情、擦边、裸露", "血腥、恐怖、惊悚", "带二维码、广告、联系方式", "政治人物或敏感时事", "普通人的私人照片"],
+      "dir": "data/search",
+      "keep": 200,
+      "maxMB": 10
+    }
+  }
+}

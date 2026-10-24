@@ -1,0 +1,39 @@
+{
+  "name": "@mumu/desktop-pet",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "桌宠开关：她电脑桌面上的 Live2D 桌宠显示与否、置顶、大小、位置（/pet on|off，meta.pet，/api/desktop-pet/state）",
+  "mumu": {
+    "enabled": true,
+    "order": 0,
+    "title": "桌宠",
+    "description": "桌宠：设置存配置库 plugins.desktop-pet.*（默认隐藏）；/pet on|off；经 web/meta 报 pet.visible、web/status 报显示与否和桌宠程序在不在；桌宠程序与网页按钮轮询 /api/desktop-pet/state",
+    "defaults": {
+      "visible": false,
+      "alwaysOnTop": true,
+      "width": 420,
+      "height": 720,
+      "corner": "bottom-right"
+    },
+    "ui": {
+      "visible": { "label": "显示桌宠", "hint": "她电脑桌面上的 Live2D 小窗；关着时只隐藏窗口，程序和托盘图标还在" },
+      "alwaysOnTop": { "label": "置顶", "hint": "总在其他窗口上面" },
+      "width": { "label": "宽", "hint": "像素；改了几秒内生效", "widget": "slider", "min": 240, "max": 1000, "step": 10 },
+      "height": { "label": "高", "hint": "像素；改了几秒内生效", "widget": "slider", "min": 300, "max": 1200, "step": 10 },
+      "corner": {
+        "label": "位置",
+        "hint": "改了就挪到这个角；之后手动拖到哪就记在哪",
+        "widget": "select",
+        "options": [
+          { "value": "bottom-right", "label": "右下角" },
+          { "value": "bottom-left", "label": "左下角" },
+          { "value": "top-right", "label": "右上角" },
+          { "value": "top-left", "label": "左上角" }
+        ]
+      }
+    }
+  }
+}

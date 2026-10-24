@@ -1,0 +1,16 @@
+{
+  "name": "@mumu/mind-default",
+  "version": "0.3.1",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "默认心流（大脑）：单级决策，可被新输入打断，每条消息都先经它门控",
+  "mumu": {
+    "enabled": true,
+    "order": 0,
+    "title": "大脑",
+    "description": "大脑：JSON 决策（校验 + 重试 + 降级）；每条消息先到这里，可放行脊椎秒回（quick）、带想法回、应一声并起动作或不回；思考途中有新输入立即作废重想，原因带到下一拍；每拍都带全频道的最近对话",
+    "defaults": { "historyNote": true }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@mumu/storage-sqlite",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "SQLite 存储：会话日志落盘 + 配置库 + 裸 db 句柄",
+  "mumu": {
+    "enabled": true,
+    "order": -100,
+    "description": "SQLite 存储后端：日志落盘、配置库（config 服务）、裸 db 句柄（db 服务，供插件开自己的表）",
+    "defaults": { "dataDir": "data", "file": "mumu.db" }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@mumu/commands",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "管理命令注册表：任何插件都能登记 /命令，任何表现端都能执行",
+  "mumu": {
+    "enabled": true,
+    "order": -95,
+    "description": "管理命令注册表（commands 服务）：插件登记 /命令，CLI 与 Web 调试页共用同一套"
+  }
+}

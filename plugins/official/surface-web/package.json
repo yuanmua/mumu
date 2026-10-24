@@ -1,0 +1,37 @@
+{
+  "name": "@mumu/surface-web",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "Web 传输层：HTTP + SSE，实现 docs/web-protocol.md，服务 apps/web 构建产物",
+  "mumu": {
+    "enabled": true,
+    "order": 10,
+    "title": "网页",
+    "description": "Web 传输层：零依赖 HTTP + SSE（日志纯投影）、输入/回执/清除、/api/meta、/api/tts、/api/command、流式感知、通用设置 / 状态 / 插件路由与面板；服务 apps/web/dist",
+    "ui": {
+      "host": { "label": "监听地址", "hint": "127.0.0.1 只本机；0.0.0.0 局域网也能开（无鉴权，慎用）。改了网页会断开，按新地址重开" },
+      "port": { "label": "端口", "hint": "改了网页会断开，按新端口重开", "min": 1, "max": 65535 },
+      "replay": { "label": "重放条数", "hint": "页面连上时先补放最近多少条日志", "min": 0, "step": 50 },
+      "dist": { "label": "前端产物目录", "hint": "相对本插件目录" },
+      "name": { "label": "兜底角色名", "hint": "persona 会覆盖它" },
+      "modelPresets": { "label": "模型面板的一键填充" },
+      "character": { "label": "当前角色与舞台", "hint": "由「角色」「皮肤」下拉写入" },
+      "media": { "label": "图片消息目录", "hint": "相对后端工作目录；要和 action-image 的目录一致" }
+    },
+    "defaults": {
+      "host": "127.0.0.1",
+      "port": 3939,
+      "replay": 400,
+      "dist": "../../../apps/web/dist",
+      "name": "沐沐",
+      "media": "data/media",
+      "modelPresets": [
+        { "name": "DeepSeek", "baseURL": "https://api.deepseek.com", "model": "deepseek-chat", "apiKeyRef": "deepseek" },
+        { "name": "本地 4090", "baseURL": "http://127.0.0.1:8091/v1", "model": "qwen3.8-27b", "apiKeyRef": "local", "fallback": "default", "responseFormat": "text" }
+      ]
+    }
+  }
+}

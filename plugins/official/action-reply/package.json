@@ -1,0 +1,25 @@
+{
+  "name": "@mumu/action-reply",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "description": "reply 动作：流式发言 + 表情/动作/分段标记 + 补充发言",
+  "mumu": {
+    "enabled": true,
+    "order": 0,
+    "description": "reply 动作：Performer 流式发言、marker 通道（emo/act/br/tool）、append 补充、旁白式引导、按频道回复",
+    "defaults": { "historyLimit": 30, "historyPool": 200, "newline": "all", "reflexMaxChars": 8, "resultKinds": ["computer.result", "dsh.result", "extend.result", "search.result"], "resultWindowSec": 600, "resultMaxChars": 300 },
+    "ui": {
+      "idleHint": { "label": "没在做事时给发言者的提醒", "hint": "这个对话里没有在跑的动作时加这段：没开始的事别说「这就去」、被问进度别编。不填用内置的；填空串 = 不加", "widget": "textarea" },      "resultKinds": { "label": "算「动作结果」的感知", "hint": "对话里有还没汇报的这类结果时，下一次带想法的发言就是汇报它：围绕结果说，不去接群里最新的闲话" },
+      "resultWindowSec": { "label": "多久以前的结果不再提（秒）", "widget": "slider", "min": 60, "max": 3600, "step": 60 },
+      "resultMaxChars": { "label": "结果原文摘录多少字", "hint": "给发言者看的结果原文（压成一行）截到这么多字", "widget": "slider", "min": 0, "max": 1000, "step": 50 },
+      "historyLimit": { "label": "发言者看几轮历史", "hint": "私聊 / 网页对话里原样带最近这么多轮；群里由群聊策略换成阅读窗口（它的条数见那边的设置）" },
+      "historyPool": { "label": "候选池：先取最近几条给阅读窗口挑" },
+      "newline": { "label": "换行算不算分段", "widget": "select", "options": [{ "value": "all", "label": "任何换行都分段" }, { "value": "double", "label": "只有空行分段" }, { "value": "none", "label": "不管换行" }] },
+      "reflexMaxChars": { "label": "秒回最多几个字", "hint": "快回（大脑放行的 quick、脊椎兜底）只回一条：说出字后遇到句末标点（或说够三个字后的逗号）就收，到这么多字硬收", "widget": "slider", "min": 2, "max": 30, "step": 1 },
+      "reflexHint": { "label": "秒回时给发言者的提醒", "hint": "不填用内置的「只回一条、六个字以内、别编来历」；填空串 = 不加这段","widget": "textarea" }
+    }
+  }
+}
