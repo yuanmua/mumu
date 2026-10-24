@@ -15,7 +15,7 @@ TypeScript + Node 22.15+，ESM，内核零运行时依赖。代码由 AI 编写�
 | 任何任务 | 本文 → [docs/handbook.md](docs/handbook.md)（§2 判据、§5 核心约定、§9 决策记忆） |
 | 改内核 | 再读 [docs/kernel.md](docs/kernel.md) 与 [docs/architecture-paper.md](docs/architecture-paper.md) §9 冻结契约 |
 | 写插件 | handbook §6 扩展点、§7 插件约定，再看一个最像的官方插件 |
-| 做外围（插件 / Web 前端 / Live2D / QQ） | 切到 `bridge` 分支，读那边的 docs/periphery.md 与 docs/web-protocol.md |
+| 做外围（插件套件 / Web 前端 / Live2D） | [docs/periphery.md](docs/periphery.md) + [docs/web-protocol.md](docs/web-protocol.md) |
 | 不知道现状 | handbook §12 当前状态 |
 
 读完再动手。**不要凭记忆猜 API**：类型在 `src/index.ts` 一处导出，打开看。
@@ -24,7 +24,7 @@ TypeScript + Node 22.15+，ESM，内核零运行时依赖。代码由 AI 编写�
 
 1. 内核对外只经 `src/kernel/index.ts` 一个出口。内核外任何文件不许 import `src/kernel/<子路径>`。
 2. 插件只从 `src/index.ts` 导入，不许摸 `src/` 内部其他文件。
-3. `apps/` 下的前端应用**不许 import `src/`**，只认 web-protocol.md 的 JSON 契约（`apps/` 与该文档在 `bridge` 分支）。
+3. `apps/` 下的前端应用**不许 import `src/`**，只认 [docs/web-protocol.md](docs/web-protocol.md) 的 JSON 契约。
 4. 内核里不出现：provider、动作名、表情、会话形态、模态、存储介质、任何一句中文渲染。
    判据：**换一个插件能不能换掉它？** 能 → 它是插件，不进内核。
 5. [architecture-paper.md §9](docs/architecture-paper.md) 列的契约是冻结的。要改，先改 handbook §9.3 写清为什么，再改代码。
@@ -39,6 +39,7 @@ TypeScript + Node 22.15+，ESM，内核零运行时依赖。代码由 AI 编写�
    ```bash
    npm run check && npm test
    ```
+   前端另跑 `npm run check:web && npm run test:web && npm run build:web`（存在 `apps/web` 后）。
    不许为了让测试过而删测试或放宽断言；测试红了先搞清为什么。
 4. **更新文档**（见 §5 表）。代码与文档不一致 = 没做完。
 5. **汇报**：做了什么、验证结果原样贴（失败就说失败）、没做什么与为什么、下一步建议。
@@ -54,7 +55,7 @@ TypeScript + Node 22.15+，ESM，内核零运行时依赖。代码由 AI 编写�
 - `git push`、`git commit`、`rm -rf` 数据目录——先问用户。
 - **测试工具整库清空**（用户定的规矩，2026-10-22）：探针、模拟器、压测、清理脚本一律不许调 `/api/clear` 或清 events / 记忆表；
   要「没有历史」就开新的测试频道（`c:probe-*`、模拟器每轮的新群号、压测里同一个人的新小号）。压测要在不断累积的状态下量，不清。
-- **清理前不备份**：任何会删数据的操作（网页的清除按钮、清理脚本、手工删库）之前必须先自动备份整库到 `data/backups/`
+- **清理前不备份**：任何会删数据的操作（网页的清除按钮、`scripts/clean-sim.cjs`、手工删库）之前必须先自动备份整库到 `data/backups/`
   （`backup` 服务 / `VACUUM INTO`）；备份失败就不删。
 
 ## 5. 哪个改动更新哪个文档
@@ -64,8 +65,8 @@ TypeScript + Node 22.15+，ESM，内核零运行时依赖。代码由 AI 编写�
 | 内核机制 / 公共类型 | `docs/kernel.md` 对应小节；若触及冻结契约，还有 `docs/architecture-paper.md` §9 与 handbook §9.3 |
 | 新扩展点（waterfall / emit / 服务键） | handbook §6 表 + `docs/kernel.md` 表 |
 | 新增 / 删除 / 改职责的插件 | 该插件 `README.md` + handbook §7 官方插件表 |
-| Web 协议（端点、事件、字段） | `bridge` 分支：**先改** `docs/web-protocol.md`，再改 `plugins/official/surface-web` 与 `apps/web` |
-| 外围结构、里程碑完成 | `bridge` 分支：`docs/periphery.md` 进度表 + 对应插件 / `apps/web` 的 README |
+| Web 协议（端点、事件、字段） | **先改** `docs/web-protocol.md`，再改 `plugins/official/surface-web` 与 `apps/web` |
+| 外围结构、里程碑完成 | `docs/periphery.md` 进度表 + 对应插件 / `apps/web` 的 README |
 | 做完一个阶段 / 改了方向 | handbook §12 当前状态 |
 | 否决或推迟了一个方案 | handbook §9 决策记忆（这是文档存在的主要理由） |
 
@@ -84,14 +85,23 @@ TypeScript + Node 22.15+，ESM，内核零运行时依赖。代码由 AI 编写�
 ## 7. 命令
 
 ```bash
-npm start              # 裸启内核；有输入输出要往 plugins/ 放插件（官方插件在 bridge 分支）
+npm start              # 起沐沐（CLI + Web 传输层在 3939）
 npm run check          # tsc 严格模式
 npm test               # node:test，含三条边界测试
+npm run dev:web        # 前端开发（Vite 5173，/api 代理到 3939）
+npm run build:web      # 构建前端，之后直接开 http://127.0.0.1:3939
+npm run check:web      # vue-tsc
+npm run test:web       # vitest（投影、分句、思考时间线）
+npx tsx scripts/probe.ts [s1..s6]   # 对着运行中的后端跑打断场景，带时间戳 + 不变量核对；每个场景开新测试频道、自己报送达，不清库
+npx tsx scripts/fake-onebot.ts [场景…]   # 假 NapCat 群聊模拟器（--list 看场景）；npx tsx scripts/replay.ts 是真实语料回放压测
+scripts/retest-clone.sh <N>              # 起第 N 路独立测试实例（克隆目录 + 库快照，网页 394N / 假 NapCat 300(N+1)），全量复测多路并发用；--stop 收
+npx tsx scripts/test-stats.ts <起始seq> [终止seq] [库]   # 从日志库算决策 / 首字 / 脊椎分流 / 作废拍 / token（只读）
+swift scripts/cutout.swift in.png out.png   # macOS Vision 抠人物立绘（零依赖），做新角色底图用
 ```
 
 运行期命令（终端或调试页「命令」）：`/help` · `/plugins` · `/plugin enable|disable|reload <id>` · `/config get|set <路径> [值]` · `/secret set|del|list` · `/log [n]` · `/stream <话>` · `/quit`
 
-**改了对话行为（mind / reflex / reply / persona / group-policy，都在 `bridge` 分支）要测**，但分两层（用户定的规矩，2026-10-22）：
+**改了对话行为（mind / reflex / reply / persona / group-policy）要测**，但分两层（用户定的规矩，2026-10-22）：
 - **单项改动**：只跑与自己改动相关的场景（`probe.ts <场景>`、`fake-onebot.ts <场景>`），**不跑全量**探针 / 模拟器全场景 / 压测——全量一轮至少半小时。
 - **全量聊天测试**（探针全场景、模拟器全场景、`replay.ts` 压测）在几处改动都收尾后单独跑一次并出报告。
 - **真实聊天里暴露的问题必须进测试集**：按日志原样做成 `scripts/fake-onebot/` 的场景（谁说了什么、她当时错在哪、现在要求什么），不能只口头修。

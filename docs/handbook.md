@@ -10,8 +10,6 @@
 >
 > 测试以 `npm test` 为准（全绿）· 协作规则见 [../CLAUDE.md](../CLAUDE.md)
 
-> **本分支（main）只含内核与装配层。** 文中提到的官方插件、`apps/`、`scripts/`、periphery.md、web-protocol.md 都在 `bridge` 分支（靠 API 接入的完整产品）。
-
 ---
 
 ## 1. 项目是什么
@@ -81,7 +79,7 @@ mumu/
    内核是独立的一块：内部怎么分目录、怎么重构都不外溢。
    往内核加机制时在 `kernel/index.ts` 补一行导出即可，`src/index.ts` 不用动。
 2. **插件只从 `src/index.ts` 导入** —— 不许绕到 `src` 内部任何文件。
-3. **`apps/` 不许 import `src/`** —— 浏览器端只认 `web-protocol.md`（在 bridge 分支）。
+3. **`apps/` 不许 import `src/`** —— 浏览器端只认 [web-protocol.md](web-protocol.md)。
 
 三条都有测试兜底，越界会红。
 
@@ -215,7 +213,7 @@ MediaFields { mime?, ref?, bytes?, durationMs? }   非文本载荷：本体在 B
 
 ## 6. 扩展点全表
 
-> 内核自己的扩展点是四条水线、两个观察事件、七个服务键（[architecture-paper.md](architecture-paper.md) §9）；表里其余的是 bridge 分支插件的约定。
+> 内核自己的扩展点是四条水线、两个观察事件、七个服务键（[architecture-paper.md](architecture-paper.md) §9）；表里其余的是插件自己的约定。
 
 ### waterfall（改一切 / 插件改插件的落点）
 
@@ -294,7 +292,7 @@ plugins/                        任意分层归类，层数不限
 | 配置改动自动重载 | `/config set plugins.<id>.…` → 装配层精确重载该插件（`.enabled` 除外） |
 | 热重载范围 | 入口与插件目录内的子模块一起刷新（`src/loader/fresh.ts` 的 resolve 钩子，需 ESM 插件 + Node 22.15+）；`src/` 与别的插件不重复实例化；新增插件目录 `/plugin scan` 即装上；文件指纹没变的监视事件不算；重载服务提供者连带重载注入它的插件；单个插件装不上只跳过它（`/plugins` 显示原因） |
 
-### 官方插件（都在 `bridge` 分支的 `plugins/official/` 下，2026-10-12 第二版）
+### 官方插件（都在 `plugins/official/` 下，2026-10-12 第二版）
 
 > 叫法（2026-10-22 起）：**大脑 = `mind-default` 插件**（旧称「导演」），**脊椎 = `reflex` 插件**（旧称「反射」）。
 > 只改叫法：插件 id、事件名（`reflex.*`）、模型角色（`mind.decide`、`performer.reflex`）、配置键一律不动。下文 2026-10-22 之前的记录保留当时的叫法。
@@ -308,7 +306,7 @@ plugins/                        任意分层归类，层数不限
 | mind-default | 0 | **大脑**（旧称导演）：单级决策，每条消息都先到这里（大脑门控）：`quick:true` 放行脊椎秒回一条短的、start reply 带想法、应一声并起动作，或不回；思考可被新输入作废，被作废那拍的原因全部带到下一拍并标「想到一半被打断」；规则与动作目录放 system 最前（前缀缓存），每拍都带全频道的最近对话（「精简拍」同日撤销，见 §9.3）；结果感知已经处理过的动作，它结束的那次唤醒不再单独想（`reported.ts`，免得把后续动作再做一遍）；最近几张图看原图（服务 `images`，占位编号「[图片1]」、原图附在末尾）；落 `mind.decision` |
 | reflex | 0 | **脊椎**（旧称反射）：不抢先开口。私聊合流（对方停下再叫醒大脑）；`beat/gather`【脊椎】给大脑贴提示（还在发 / 像要她做事 / 主人说的 / 很简单可 quick）；兜底：白名单里的招呼（纯表情包或 ≤4 字无问号、不像要她做事、不是主人说的）大脑 `fallbackMs` 内没决定就先起一条简短 reply（`reflex.route` path=fallback）；`intent/pre-dispatch` 硬闸保证同频道单回复、她在别处说话时不开口（`busy-elsewhere`，一次只在一个会话里；被拦的念头说完那拍提醒大脑）、合流中不回、兜底之后不再说一遍，同拍动作被 guard 拦下时改 reply 的念头（别说这就去、别说电脑坏了） |
 | action-reply | 0 | 流式发言；marker 通道 emo/act/br/tool；引导放 system 尾部，旁白给开口契机；水线 `reply/prompt`；分段写法归一化（`br.ts`：`<br>`、残缺的 `<\|br>` 之类、换行 → `<\|br\|>`，`newline` 可配；她的历史从 `utterance.part` 找回分段位置插回 `<\|br\|>`）；工作记忆按会话过滤；最近几张图的原图跟着发的那条 user 轮次（服务 `images`，快回不带） |
-| action-computer | 0 | `computer` 动作：`task.agent` 跑 JSON 工具循环，驱动她 Windows 上的身体服务 `apps/body`（PowerShell / UI Automation / 键鼠 / Edge）；每步 `a.note` + 落 `computer.step`，结果以 `computer.result` 感知回报大脑；教发言者与大脑「你有一台电脑」+ `beat/gather`「电脑现状」；`/body`、`/body stop` |
+| action-computer | 0 | `computer` 动作：`task.agent` 跑 JSON 工具循环，驱动她 Windows 上的身体服务 [`apps/body`](../apps/body/README.md)（PowerShell / UI Automation / 键鼠 / Edge）；每步 `a.note` + 落 `computer.step`，结果以 `computer.result` 感知回报大脑；教发言者与大脑「你有一台电脑」+ `beat/gather`「电脑现状」；`/body`、`/body stop` |
 | expression-basic | 0 | 带提示的表情/动作词汇 + 放置教学 + `<\|br\|>` 分段 |
 | emotion | 0 | 情绪状态（`emotion`）：自表达推动、随时间回落；段落 + 材料块 + `emotion.changed` |
 | persona | 0 | 人格段落（所有受众，**最前**；有网名 `aliases` 时末尾一句网名与真名）+ 腔调 + **说话的底线**（发言者，**最后**；短；`rules` 可整段替换）+ `web/meta` 报名字与网名 + 水线 `persona/names`（真名 + 网名，给「是不是在叫她」的判定用） |
@@ -316,7 +314,7 @@ plugins/                        任意分层归类，层数不限
 | characters | 0 | 角色包（`/character list\|use`）：人设 + 舞台（live2d / tachie）+ 声音打包成 `characters/<id>/character.json`，切换时写进 persona / tts / surface-web 的配置；`web/meta` 报舞台 |
 | tts | 5 | 语音合成（`tts`）：OpenAI 兼容 `/v1/audio/speech` |
 | surface-cli | 10 | 终端表现端 + `/plugins /plugin /config /log /stream /quit`；有浏览器连着时让位（只留命令），stdin 非 TTY 时不呈现 |
-| surface-web | 10 | Web 传输层：实现 `web-protocol.md`，服务全部频道（对话 = 频道），服务 `apps/web/dist`；广播 `web/clients` |
+| surface-web | 10 | Web 传输层：实现 [web-protocol.md](web-protocol.md)，服务全部频道（对话 = 频道），服务 `apps/web/dist`；广播 `web/clients` |
 | surface-onebot | 10 | QQ 表现端（OneBot v11 正向 WS 连 NapCat，零依赖）：私聊 → `message`，群聊 → `group.message`（@ / 叫名字 → `message` + urgent），戳她 / 撤回 / 进出群 / 加好友 → `qq.*`；按打字节奏分条发、每条发出才回执；`<\|quote\|>` `<\|at:名字\|>`；`vision.read` 看图、语音转文字；最近几张图另存副本、以原图进发言者 / 大脑上下文（`images.inline`：每会话 3 张、15 分钟内、≤2MB，服务 `images` 选图，描述照旧给记忆 / 阅读窗口 / 日志）；动作 `qq.send` `qq.manage` `qq.query` `qq.call`（NapCat 任意接口）；`segments.ts` 是给模拟器的稳定层；表情包经 `stickers` 服务（现取不注入；还在找的表情包在发件箱里占一格）；`/onebot` |
 | stickers | 5 | 表情包：库（群里收 / 网上找 / 主人放，`data/stickers`）、`vision.read` 审核打标（规则可配，看不了就不发）；发不发——对方要就发，平时按心情 × 热度 × 对方刚发没，认真话题和刚发过不发，一条发言最多一张；库里没有按描述联网找（360 图片搜索 / 发表情网，限流，审核过才入库），对方要却找不到给大脑 `sticker.missing`；服务 `stickers` 给 QQ，网页频道自己挂 `surface.media`；发言者 / 大脑材料里有「刚发过什么」「对方在要」；面板「表情包库」（缩略图、禁用 / 删除 / 重审、按描述补库）、状态卡、`/stickers` |
 | group-policy | 0 | 群聊读空气 + 多会话调度：`percept/pre-beat` 给群消息打接话概率（先分「在聊 / 没在聊」两种状态：在聊多聊几句、没在聊偶尔看一眼；再 × 时段表 × 每群覆盖，问句 / 相关 / 接话往上，刷屏 / 表情 / 对聊往下，是她喜欢的话题再 × (1 + `interest.k` × 感兴趣程度)（语义相近度 × 兴趣分，interests 插件给）；带低俗词、机器人说的、同人连问只打折不归零，忙时只回必答）；和她聊上的人接着说不用 @ 也按「在聊」打分（`convo.ts` 正在对话，起点 `followUp`、按她接过几句衰减，在聊 ≠ 每句都接）、没 @ 她的话一律打分没有直通（主人不特殊）、她参与的话题里可以主动接；机器人的话在大脑与发言者的历史里标出来；**内容类的「不接」一条都不写死**：词表、机器人名单只用来给大脑写一行提示（`beat/gather`【读空气】），接不接她自己定；按人累积的脾气（`temper.ts`：反复 @、低俗话冲她说、骂她、让她自证 AI 攒骚扰度，半衰期消气）给大脑形容词、给发言者态度，大脑用动作 `group.ignore` 决定不理 / 拉黑 / 原谅（日志 `temper.ignored`，到期自动恢复，主人不适用，拉黑由 memory 记进印象）；她正在别处说话时群里找她的先排队、说完再回；`beat/gather`「手机上现在的情况」（各会话未读、@、她在哪）；`reply/prompt` 群聊阅读窗口；`/freq`；认群里的其他机器人（名单 + 自动打分）并标上，服务 `bots`（`isBot` / `ignored`）、动作 `group.bot`、`/bot`；面板「脾气（按人）」 |
@@ -498,12 +496,12 @@ Gate 层要不要 · marker 词汇有哪些 · 情绪维度全局还是按对象
 ## 11. 命令
 
 ```bash
-npm start          # 裸启内核；终端等表现端插件在 bridge 分支
+npm start          # 起沐沐（CLI）
 npm run check      # tsc 严格模式
 npm test           # node:test
 ```
 
-运行时命令（commands 插件提供，在 bridge 分支）：`/plugins` · `/plugin enable|disable|reload <id>` · `/config get|set <路径> [值]` · `/log [n]` · `/quit`
+运行时命令：`/plugins` · `/plugin enable|disable|reload <id>` · `/config get|set <路径> [值]` · `/log [n]` · `/quit`
 
 开发时改插件文件**自动热重载**（watch 默认开）。
 
