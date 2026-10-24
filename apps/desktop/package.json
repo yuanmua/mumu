@@ -1,0 +1,15 @@
+{
+  "name": "@mumu/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "main.cjs",
+  "description": "沐沐桌宠：她电脑桌面上的透明置顶窗口，Live2D + 对话框，复用 apps/web 的页面；只认 docs/web-protocol.md",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "44.7.0"
+  }
+}

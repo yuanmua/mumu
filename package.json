@@ -9,12 +9,17 @@
     "node": ">=22.15"
   },
   "workspaces": [
-    "plugins/**"
+    "plugins/**",
+    "apps/*"
   ],
   "scripts": {
     "start": "tsx src/main.ts",
     "check": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "dev:web": "npm --workspace apps/web run dev",
+    "build:web": "npm --workspace apps/web run build",
+    "check:web": "npm --workspace apps/web run check",
+    "test:web": "npm --workspace apps/web run test"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

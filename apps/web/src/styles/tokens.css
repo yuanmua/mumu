@@ -1,0 +1,58 @@
+/* 设计令牌：颜色只在这里定义，组件只用变量。默认浅色，跟随系统深色。 */
+:root {
+  --bg: #f6f4f1;
+  --bg-elev: #ffffff;
+  --panel: rgba(255, 255, 255, 0.78);
+  --panel-solid: #ffffff;
+  --line: rgba(20, 24, 32, 0.1);
+  --fg: #1c1f26;
+  --fg-dim: #6b7280;
+  --accent: #5b7cfa;
+  --accent-fg: #ffffff;
+  --user: #e9eefc;
+  --character: #ffffff;
+  --ok: #3fa66b;
+  --warn: #d9941a;
+  --err: #d9534f;
+  --shadow: 0 10px 30px rgba(20, 24, 32, 0.08);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --gap: 12px;
+  --font: 15px/1.6 -apple-system, "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --mono: 12px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --stage-bg: linear-gradient(180deg, #eef1f8 0%, #f6f4f1 60%, #f3eee6 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1116;
+    --bg-elev: #171a21;
+    --panel: rgba(23, 26, 33, 0.78);
+    --panel-solid: #171a21;
+    --line: rgba(255, 255, 255, 0.1);
+    --fg: #e6e8ee;
+    --fg-dim: #8b93a3;
+    --accent: #8ab4ff;
+    --accent-fg: #0f1116;
+    --user: #253252;
+    --character: #1c2029;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --stage-bg: linear-gradient(180deg, #141825 0%, #0f1116 60%, #121014 100%);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f1116;
+  --bg-elev: #171a21;
+  --panel: rgba(23, 26, 33, 0.78);
+  --panel-solid: #171a21;
+  --line: rgba(255, 255, 255, 0.1);
+  --fg: #e6e8ee;
+  --fg-dim: #8b93a3;
+  --accent: #8ab4ff;
+  --accent-fg: #0f1116;
+  --user: #253252;
+  --character: #1c2029;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --stage-bg: linear-gradient(180deg, #141825 0%, #0f1116 60%, #121014 100%);
+}

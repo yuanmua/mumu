@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>沐沐</title>
+    <!--
+      Live2D Cubism Core（闭源运行时，不在 npm 上，不入库）必须在应用模块之前同步加载：
+      pixi-live2d-display 在 import 时就检查它。默认从 Live2D 官方 CDN 取；
+      想离线用，把 Cubism SDK for Web 里的 Core/live2dcubismcore.min.js 放到 public/live2d/core/，
+      然后把下面的 src 改成 /live2d/core/live2dcubismcore.min.js。加载失败时舞台显示说明，聊天照常可用。
+    -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

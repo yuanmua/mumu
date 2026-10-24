@@ -1,0 +1,40 @@
+@import './tokens.css';
+
+* { box-sizing: border-box; margin: 0; }
+html, body, #app { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: var(--font);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: none; background: none; }
+a { color: var(--accent); text-decoration: none; }
+::selection { background: var(--accent); color: var(--accent-fg); }
+
+/* 通用小组件 */
+.chip {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 20px;
+  background: var(--user);
+  color: var(--accent);
+  vertical-align: middle;
+}
+.btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-solid);
+  border: 1px solid var(--line);
+  color: var(--fg);
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+.btn.danger { color: var(--err); }
+.btn.danger.armed { background: var(--err); color: #fff; border-color: transparent; }
+.mono { font: var(--mono); }
+.dim { color: var(--fg-dim); }
