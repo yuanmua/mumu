@@ -1,0 +1,17 @@
+node_modules/
+data/
+logs/
+*.log
+.DS_Store
+apps/web/dist/
+dist/
+backups/
+media/
+/stickers/
+__pycache__/
+*.pyc
+.venv/
+apps/web/public/live2d/core/
+apps/web/public/live2d/models/*/
+!apps/web/public/live2d/models/*/profile.json
+apps/web/public/characters/*/*.png

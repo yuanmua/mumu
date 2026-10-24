@@ -1,0 +1,24 @@
+{
+  "name": "mumu",
+  "version": "0.3.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "mumu",
+  "engines": {
+    "node": ">=22.15"
+  },
+  "workspaces": [
+    "plugins/**"
+  ],
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
