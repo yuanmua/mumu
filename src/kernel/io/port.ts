@@ -20,6 +20,7 @@ import { MAIN_CHANNEL } from '../session/types.ts'
 
 /**
  * 非文本载荷的结构位：二进制本体放 BlobStore，这里只记 ref 与描述。
+ * 只挂在 Part 上——进（Percept.parts、ChatMessage.parts）出（Utterance 的片段）都是 Part[]，一种媒体形状两边共用。
  * 内核不按 mime 分支（不认识模态），只负责让它随片段原样记账、原样传递。
  */
 export interface MediaFields {
@@ -30,12 +31,13 @@ export interface MediaFields {
 }
 
 /** 感知信封；kind 语义由产生它的插件定义，内核只用结构位 */
-export interface Percept extends MediaFields {
+export interface Percept {
   kind: string
   channel?: string // 缺省 'main'
   sender?: Sender // 与 text 同时存在才进对话历史
   text?: string // 自然语言摘要，用于历史与唤醒原因
   urgent?: boolean // 硬打断本频道正在进行的发声
+  parts?: Part[] // 非文本载荷：一条消息的几张图、一帧的几路传感器。与出口同一种片段形状，媒体字段只挂在 Part 上
   data?: Record<string, unknown>
 }
 
@@ -238,7 +240,7 @@ export class IO {
       if (this.perceptionTimeoutMs > 0) {
         live.timeout = setTimeout(() => {
           if (this.settlePerception(id, { cancelled: true, reason: 'perception-timeout' }))
-            console.warn(`[io] 在途感知 ${id} 长时间未收尾，已自动取消`)
+            console.warn(`[io] perception timed out, cancelled: ${id}`)
         }, this.perceptionTimeoutMs).unref()
       }
     }
@@ -340,7 +342,7 @@ export class IO {
       )
     }
     catch (e) {
-      console.error('[io] percept/pre-beat 出错，按默认策略继续:', e)
+      console.error('[io] interceptor failed, using defaults: percept/pre-beat:', e)
       this.deps.log.append('percept.route-error', {
         kind: p.kind,
         channel,
@@ -409,7 +411,7 @@ export class IO {
         out = await this.deps.bus.waterfall('expression/pre-emit', out, async payload => payload)
       }
       catch (err) {
-        console.error('[io] expression/pre-emit 出错，按原样送出:', err)
+        console.error('[io] interceptor failed, sending as-is: expression/pre-emit:', err)
         this.deps.log.append('expression.route-error', {
           uttId: id,
           type: e.type,
@@ -422,7 +424,8 @@ export class IO {
     }
 
     const emit = async (part: Part): Promise<void> => {
-      if (u.result)
+      // end() 之后再 emit 不算数：否则等回执期间还能往 generated 里加字，I2 的账就对不上
+      if (u.result || u.ended)
         return
       if (part.text)
         u.generated += part.text
@@ -444,8 +447,9 @@ export class IO {
           if (this.hasReporter(channel)) {
             // 有回执端：等呈现完成再结算，打断窗口保持开启
             this.maybeSettle(u)
+            // 到点回执还没来：只认已回执的前缀（I2），和打断一个口径；没人看见的不算说过
             if (!u.result)
-              u.timeout = setTimeout(() => this.settle(u, u.generated, 'settle-timeout'), this.settleTimeoutMs).unref()
+              u.timeout = setTimeout(() => this.settle(u, u.generated.slice(0, u.reported), 'settle-timeout'), this.settleTimeoutMs).unref()
           }
           else {
             // 无回执端：按全部送达记账，能力声明中已注明
@@ -466,7 +470,7 @@ export class IO {
         s.onExpression(e)
       }
       catch (err) {
-        console.error(`[io] 表现端 ${s.name} 出错:`, err)
+        console.error(`[io] surface failed: ${s.name}:`, err)
       }
     }
   }

@@ -462,3 +462,143 @@ test('文件指纹：内容没变的监视事件不算变更（SMB 挂载、杀�
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('重载：重扫清单失败不悄悄沿用旧清单——记进 list().error、这次不重载，插件照旧跑旧代码', async () => {
+  const t = await boot({ 'official/alpha': { defaults: { v: 1 } } })
+  try {
+    // 另一个目录也叫 alpha：重扫时 id 冲突大声失败
+    writePlugin(t.root, 'user/alpha', PROBE.replaceAll('%NAME%', '"alpha"'))
+    await assert.rejects(t.loader.reload('alpha'), /duplicate plugin id/)
+    const alpha = t.loader.list().find(p => p.id === 'alpha')!
+    assert.equal(alpha.loaded, true, '没卸：旧代码照旧跑')
+    assert.match(alpha.error ?? '', /duplicate plugin id/)
+    assert.equal(probes().length, 1, '没有重新装')
+
+    rmSync(join(t.root, 'user', 'alpha'), { recursive: true, force: true })
+    await t.loader.reload('alpha')
+    assert.equal(t.loader.list().find(p => p.id === 'alpha')!.error, undefined, '修好后重载成功，毛病清掉')
+    assert.equal(probes().length, 2)
+  }
+  finally { await t.dispose() }
+})
+
+test('失败口径一处：装上了但 inject 的服务还没有，list().error 说的和 scan() 是同一句', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'mumu-waiting-'))
+  writePlugin(root, 'official/user', 'export default { name: "user", inject: ["nothing"], apply() {} }\n')
+  const mumu = Mumu.create()
+  const loader = new PluginLoader(mumu, { dir: root, watch: false })
+  try {
+    await loader.start()
+    const user = loader.list().find(p => p.id === 'user')!
+    assert.equal(user.loaded, true)
+    assert.match(user.error ?? '', /waiting for services: nothing/)
+
+    writePlugin(root, 'official/giver', 'export default { name: "giver", apply(ctx) { ctx.provide("nothing", {}) } }\n')
+    const r = await loader.scan()
+    assert.deepEqual(r, { added: ['giver'], loaded: ['giver'], failed: [] })
+    assert.equal(loader.list().find(p => p.id === 'user')!.error, undefined, '依赖到了就没毛病了')
+  }
+  finally {
+    loader.stop()
+    await mumu.dispose()
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+const STORE_OK = 'export default { name: "store", apply(ctx) { ctx.provide("store", {}) } }\n'
+const USER = 'export default { name: "user", inject: ["store"], apply(ctx) { globalThis.__probe ??= []; globalThis.__probe.push({ name: "user", config: {} }); ctx.provide("userSvc", {}) } }\n'
+
+test('提供者重载失败：依赖者挂回等待队列、list() 看得见在等什么；提供者修好后自动装回', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'mumu-provider-'))
+  writePlugin(root, 'official/store', STORE_OK, { mumu: { order: -10 } })
+  writePlugin(root, 'official/user', USER)
+  const mumu = Mumu.create()
+  const loader = new PluginLoader(mumu, { dir: root, watch: false })
+  try {
+    probes().length = 0
+    await loader.start()
+    writePlugin(root, 'official/store', 'export default { name: "store", apply() { throw new Error("改坏了") } }\n', { mumu: { order: -10 } })
+    await assert.rejects(loader.reload('store'), /改坏了/)
+    const user = loader.list().find(p => p.id === 'user')!
+    assert.equal(user.loaded, true)
+    assert.match(user.error ?? '', /waiting for services: store/)
+    assert.equal(mumu.container.has('userSvc'), false, '旧的已卸下，不攥着关掉的服务')
+
+    writePlugin(root, 'official/store', STORE_OK, { mumu: { order: -10 } })
+    await loader.reload('store')
+    assert.equal(loader.list().find(p => p.id === 'user')!.error, undefined)
+    assert.equal(probes().filter(p => p.name === 'user').length, 2, '提供者回来，依赖者自动装回')
+  }
+  finally {
+    loader.stop()
+    await mumu.dispose()
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('停用提供者：依赖者一并卸下挂回等待队列，再启用自动装回', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'mumu-disable-'))
+  writePlugin(root, 'official/store', STORE_OK, { mumu: { order: -10 } })
+  writePlugin(root, 'official/user', USER)
+  const mumu = Mumu.create()
+  const loader = new PluginLoader(mumu, { dir: root, watch: false })
+  try {
+    probes().length = 0
+    await loader.start()
+    await loader.setEnabled('store', false)
+    assert.equal(mumu.container.has('userSvc'), false)
+    assert.match(loader.list().find(p => p.id === 'user')!.error ?? '', /waiting for services: store/)
+    await loader.setEnabled('store', true)
+    assert.equal(mumu.container.has('userSvc'), true)
+    assert.equal(probes().filter(p => p.name === 'user').length, 2)
+  }
+  finally {
+    loader.stop()
+    await mumu.dispose()
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('等依赖的插件 apply 抛错：错记在它自己头上（plugin.failed），触发激活的那个照常，改好后能重试', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'mumu-waiter-'))
+  writePlugin(root, 'official/a', 'export default { name: "a", inject: ["web"], apply() { throw new Error("a 坏了") } }\n')
+  writePlugin(root, 'official/b', 'export default { name: "b", apply(ctx) { ctx.provide("web", {}) } }\n', { mumu: { order: 10 } })
+  const mumu = Mumu.create()
+  const loader = new PluginLoader(mumu, { dir: root, watch: false })
+  try {
+    await loader.start()
+    const by = (id: string) => loader.list().find(p => p.id === id)!
+    assert.deepEqual([by('b').loaded, by('b').error], [true, undefined])
+    assert.equal(by('a').loaded, false)
+    assert.match(by('a').error ?? '', /a 坏了/)
+    assert.ok(mumu.log.events.some(e => e.type === 'plugin.failed' && e.data.name === 'a'))
+    mumu.assertReady()
+
+    writePlugin(root, 'official/a', PROBE.replaceAll('%NAME%', '"a"'))
+    const r = await loader.scan()
+    assert.deepEqual(r, { added: [], loaded: ['a'], failed: [] })
+    assert.deepEqual([by('a').loaded, by('a').error], [true, undefined])
+  }
+  finally {
+    loader.stop()
+    await mumu.dispose()
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('并发重载串行执行，不报「已加载」的假失败', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'mumu-serial-'))
+  writePlugin(root, 'official/slow', 'export default { name: "slow", async apply() { await new Promise(r => setTimeout(r, 50)) } }\n')
+  const mumu = Mumu.create()
+  const loader = new PluginLoader(mumu, { dir: root, watch: false })
+  try {
+    await loader.start()
+    await Promise.all([loader.reload('slow'), loader.reload('slow')])
+    assert.deepEqual([loader.list()[0].loaded, loader.list()[0].error], [true, undefined])
+  }
+  finally {
+    loader.stop()
+    await mumu.dispose()
+    rmSync(root, { recursive: true, force: true })
+  }
+})

@@ -3,11 +3,11 @@ import { test } from 'node:test'
 import { Registry } from '../src/kernel/index.ts'
 
 test('有键集合：唯一，冲突大声失败，撤销后可重注册', () => {
-  const r = new Registry<{ name: string }>('动作', x => x.name)
+  const r = new Registry<{ name: string }>('action', x => x.name)
   const off = r.add({ name: 'reply' })
   assert.equal(r.has('reply'), true)
   assert.equal(r.get('reply')?.name, 'reply')
-  assert.throws(() => r.add({ name: 'reply' }), /动作 reply 已存在/)
+  assert.throws(() => r.add({ name: 'reply' }), /action already registered: reply/)
   off()
   assert.equal(r.has('reply'), false)
   r.add({ name: 'reply' }) // 撤销后可重注册（热重载靠这条）

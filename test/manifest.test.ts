@@ -70,7 +70,7 @@ test('id 冲突大声失败（否则配置会静默串台）', async () => {
     'user/two': { name: '@other/dup' },
   })
   try {
-    await assert.rejects(scanPlugins(root), /插件 id 冲突: "dup"/)
+    await assert.rejects(scanPlugins(root), /duplicate plugin id "dup"/)
   }
   finally { rmSync(root, { recursive: true, force: true }) }
 })

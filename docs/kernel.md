@@ -43,13 +43,14 @@ src/loader/    Host 装配层：扫描 plugins/、热重载、启停（不属于
 内核最重要的一条纪律：**输入与输出同样开放**。
 
 ```
-Percept { kind: string, channel?, sender?, text?, urgent?, data?, ...MediaFields }   ← 进
-Part    { kind: string, text?, data?, ...MediaFields }                               ← 出
-MediaFields { mime?, ref?, bytes?, durationMs? }   非文本载荷：本体在 BlobStore，这里只记 ref
+Percept { kind: string, channel?, sender?, text?, urgent?, parts?: Part[], data? }   ← 进
+Part    { kind: string, text?, data?, ...MediaFields }                              ← 出；也是进的片段
+MediaFields { mime?, ref?, bytes?, durationMs? }   非文本载荷：本体在 BlobStore，这里只记 ref；只挂在 Part 上
 ```
 
 `kind` 两边都是自由字符串，语义由插件定义。内核不认识 message / danmaku / vision / image / card / game.cmd 中的任何一个。
 `mime` 也一样：内核不按它分支（不认识模态），只让它随片段原样记账、原样传递。非文本片段在 `text` 里写一句摘要作兜底。
+一条感知带几个片段（一条消息的几张图、一帧的几路传感器）放 `parts`，和出口、`ChatMessage.parts` 同一种 `Part`——媒体只有一种形状。
 
 固定的只有**节拍**（这才是机制），两端都是流：
 
@@ -100,7 +101,8 @@ MediaFields { mime?, ref?, bytes?, durationMs? }   非文本载荷：本体在 B
 
 ```
 MaterialBlock { from, order, text, data? }
-     order = 必填；同号按 from 排（与段落同号按 id 排是同一条规则），不看插件加载先后
+     order = 必填；同号按 from 排（与段落同号按 id 排是同一条规则），不看插件加载先后。
+             槽位取 `src/shared/order.ts` 的 `MATERIAL_ORDER`，和段落的 `PROMPT_ORDER` 是同一条约定，不各自写数字
      text = 任何 decider 都能渲染的自然语言
      data = 给认识它的 decider 的结构化载荷
 ```
@@ -127,10 +129,14 @@ MaterialBlock { from, order, text, data? }
 
 `Outcome = 'done' | 'stopped' | 'error' | 'interrupted'`（interrupted 只由 I3 孤儿恢复补记）。decider 停动作不给理由时，理由是 `decider-stop`。
 
-**降级必须可见**：决策抛错记 `beat.decide-failed { error }`；意图派发失败记 `intent.dispatch-failed { intent, code, error }`，
+**降级必须可见**：决策抛错记 `beat.decide-failed { error }`；决策超过 `decideTimeoutMs`（默认 120 秒）记 `beat.decide-timeout { afterMs }`，
+这一拍按空决策走，给 decider 的 `signal` 同时触发，让它停掉自己的模型调用——否则一次卡住的调用会让整个节拍停摆，之后的唤醒全部积压；
+汇聚材料（`beat/gather`）抛错记 `beat.failed`，这一拍作废、不重试；
+意图派发失败记 `intent.dispatch-failed { intent, code, error }`，
 `code` 是 `unknown-action`（没有这个动作）、`no-target`（send / stop 找不到运行中的实例，多半是它刚结束）或 `error`。
 内核抛的带码错误是 `KernelError { code }`；`message` 只给开发者在控制台看。
-`expression/pre-emit` 拦截器抛错记 `expression.route-error` 并按原样送出——发声必须能走到结算。
+`percept/pre-beat` 拦截器抛错记 `percept.route-error` 并按默认路由走——感知不能丢；`expression/pre-emit` 拦截器抛错记 `expression.route-error` 并按原样送出——发声必须能走到结算。
+插件 apply 抛错记 `plugin.failed { name, error }`（含等依赖时被顺手激活的那种）。
 
 ## waterfall 扩展点
 
@@ -150,6 +156,7 @@ MaterialBlock { from, order, text, data? }
 | 事件 | 载荷 | 用途 |
 |---|---|---|
 | `log.appended` | 每条新写入的 `LogEvent` | 真源的观察口：UI、遥测、记忆写入等**纯投影**消费方监听它，不必轮询 `log.events`。存储重放不触发（重放不是新事实）；I3 补的 `action.ended` 会触发（那是新事实） |
+| `model.stream` | `{ reqId, at, chunk }` | 逐 chunk 观察（调试页看流、遥测）；不落日志，内容已被 `model.request` / `model.response` 覆盖 |
 
 观察者抛错被隔离，不会污染真源写入。要**改**行为用 waterfall，要**看**事实用 emit。
 
@@ -160,7 +167,7 @@ MaterialBlock { from, order, text, data? }
 - 给 `keyOf` ⇒ 键唯一，重复注册大声失败（段落、动作）
 - 不给 ⇒ 允许重复（marker 词汇：多个插件贡献同名表情是常态）
 
-段落组装 `prompt.assemble(audience, extras?)`：按受众过滤、按 `order` 排序、单段出错只缺那一段。`extras` 是调用方**本次**才有的一次性段落（如发言动作的大脑引导），与注册段落同一套排序、不留在集合里——没有它调用方只能把临时内容拼在整段前后，顺序就乱了。槽位数字怎么分是外围约定（`src/shared/order.ts` 的 `PROMPT_ORDER`），内核只认数字。
+段落组装 `prompt.assemble(audience, extras?)`：按受众过滤、按 `order` 排序、单段出错只缺那一段。`extras` 是调用方**本次**才有的一次性段落（如发言动作的大脑引导），与注册段落同一套排序、不留在集合里——没有它调用方只能把临时内容拼在整段前后，顺序就乱了。槽位数字怎么分是外围约定（`src/shared/order.ts`：段落 `PROMPT_ORDER`、材料块 `MATERIAL_ORDER`），内核只认数字。
 
 ## 命名约定
 
@@ -170,7 +177,7 @@ MaterialBlock { from, order, text, data? }
 ## 可配置项
 
 部署可变的数值全是 `KernelOptions`，不是硬编码常量：
-`historyLimit` · `cooldownMs` · `backoffBaseMs` · `backoffMaxMs` · `emptyFuse` · `settleTimeoutMs`
+`historyLimit` · `cooldownMs` · `backoffBaseMs` · `backoffMaxMs` · `emptyFuse` · `decideTimeoutMs` · `settleTimeoutMs` · `perceptionTimeoutMs`
 
 它们走 `Mumu.create(options)` 的**编程参数**（供嵌入式 Host 调），默认值对常规场景够用，
 所以 `main.ts` 一个参数都不传——**内核裸启动，没有配置文件**。
@@ -235,11 +242,23 @@ id 冲突大声失败；加载次序只看 `order`，与层级无关。
   新增插件目录不用重启：`/plugin scan`（`loader.scan()`）。
 - 监视事件先比文件指纹（`src/loader/watch.ts`：mtime + 大小；点开头的文件、`node_modules`、目录自身不算）：
   Windows 的递归 fs.watch 在文件只是被访问时也报事件——SMB 挂载那一刻曾让全部插件连环重载。
-- 重载服务提供者时，`inject` 了它的服务的插件一并卸下、等它装好再装回（否则它们手里是旧服务，如关掉的 db 句柄）。
+- 卸掉服务提供者（重载、停用都算）时，`inject` 了它的服务的插件一并卸下、再挂回等待队列：服务回来即自动装上，
+  期间 `list()` 显示它们在等什么（否则它们手里是旧服务，如关掉的 db 句柄）。提供者重载失败，依赖者也只是在等，不会丢。
+- 等待中的插件被别的 load 顺手激活时 apply 抛错，错归它自己：内核记 `plugin.failed { name, error }`，装配层据此把它标成失败，
+  触发激活的那个照常装好；同一轮里其它依赖已满足的等待者照常激活。
+- 重载、启停、重扫串行执行：第二个进来时第一个还卡在 apply 里，会报 `plugin already registered` 的假失败。
   装配层自己的「配置变更 → 重载」订阅也一样：存储插件重载后配置服务换了实例，订阅跟到新实例上。
 - 配置变更触发重载的路径：`plugins.<id>.<键>`（改一个键）和 `plugins.<id>`（整份覆盖）都算；只有 `.enabled` 例外（归 `setEnabled`）。
+- 重载先重读清单（改 package.json 的 defaults / main 不必重启）。重扫失败（id 冲突、清单坏了、目录没了）**不悄悄沿用旧清单**：
+  记进 `list().error`、这次不重载，插件照旧跑旧代码，改好那一下再试。
+- 插件「有毛病」只有一个口径：加载 / 重载失败的原因，或装上了但 `inject` 的服务还没有。`list().error`、`scan()` 的 failed、
+  抛给调用方的错说的都是同一句。
 
 ## 已知取舍（改之前先看）
+
+- `wakeAfterMs` 的定时唤醒算外部输入：不退避、能解除熔断。它是 decider 的显式请求（「等一会再看」），内核不替它判断该不该等；
+  decider 若每拍都空意图加一个小 `wakeAfterMs`，就是它自己在空转，熔断管不到它。
+- 有回执端但到点（`settleTimeoutMs`）回执没来：只认已回执的前缀，和打断一个口径——没人看见的不算说过（I2）。
 
 - 打字机呈现中被打断：settle 用打断瞬间的回执快照，终端可能多显示 1 个字符——误差一个 write，不值得为它加锁。
 - 多个表现端服务同一频道、能力不一致时，delivered 以「有回执的那个」为准。

@@ -4,8 +4,8 @@
 import assert from 'node:assert/strict'
 import { getEventListeners } from 'node:events'
 import { test } from 'node:test'
-import type { BeatMaterial, Ctx, MaterialBlock, Percept, WakeInput } from '../src/kernel/index.ts'
-import { Bus, Container, IO, Mumu, SessionLog } from '../src/kernel/index.ts'
+import type { BeatMaterial, Ctx, MaterialBlock, Part, Percept, WakeInput } from '../src/kernel/index.ts'
+import { Bus, Container, IO, ModelGateway, Mumu, SessionLog } from '../src/kernel/index.ts'
 
 const wait = (ms = 20): Promise<void> => new Promise(r => setTimeout(r, ms))
 
@@ -157,4 +157,80 @@ test('材料块：同号按 from 排，不看插件加载先后', async () => {
   }
   assert.deepEqual(await run(['b', 'a', 'c']), ['a', 'b', 'c'])
   assert.deepEqual(await run(['c', 'b', 'a']), ['a', 'b', 'c'])
+})
+
+test('Percept.parts：一条感知带几个片段，整条进日志（I1）；媒体字段只在 Part 上，和出口同一种形状', async () => {
+  const log = new SessionLog()
+  const io = new IO({ bus: new Bus(), log, wake: () => {} })
+  await io.percept({
+    kind: 'message',
+    channel: 'g1',
+    sender: { id: 'u' },
+    text: '[两张图]',
+    parts: [
+      { kind: 'image', mime: 'image/jpeg', ref: 'sha256:aa', bytes: 1 },
+      { kind: 'image', mime: 'image/png', ref: 'sha256:bb', bytes: 2 },
+    ],
+  })
+  const e = log.events.find(e => e.type === 'percept.received')!
+  assert.deepEqual((e.data.parts as Part[]).map(p => p.ref), ['sha256:aa', 'sha256:bb'])
+})
+
+test('发声 end() 之后再 emit 不算数：等回执期间 generated 不再变', async () => {
+  const log = new SessionLog()
+  const io = new IO({ bus: new Bus(), log, wake: () => {} })
+  let shown = 0
+  io.connect({
+    name: 's',
+    capabilities: { deliveredReport: true },
+    onExpression: (e) => { if (e.type === 'part' && e.part.text) shown += e.part.text.length },
+  })
+  const u = io.utter({ actionId: 'a#1', signal: new AbortController().signal })
+  await u.write('你好')
+  const ending = u.end()
+  await u.write('多出来的')
+  io.reportDelivered(u.id, shown)
+  const r = await ending
+  assert.deepEqual([r.generated, r.delivered, r.truncated], ['你好', '你好', false])
+})
+
+test('决策超时：到点按空决策走、记 beat.decide-timeout，节拍不停摆，decider 收到 signal', async () => {
+  const mumu = Mumu.create({ cooldownMs: 0, decideTimeoutMs: 30 })
+  let aborted = false
+  let calls = 0
+  mumu.mind.setDecider((_m, signal) => new Promise((resolve) => {
+    calls++
+    if (calls === 1)
+      signal.addEventListener('abort', () => { aborted = true })
+    else resolve({ intents: [] })
+  }))
+  mumu.mind.wake({ source: 'x', text: 'x', external: true })
+  await wait(80)
+  assert.equal(aborted, true)
+  assert.ok(mumu.log.events.some(e => e.type === 'beat.decide-timeout'))
+  mumu.mind.wake({ source: 'y', text: 'y', external: true })
+  await wait(30)
+  assert.equal(calls, 2, '超时后下一拍照常开')
+  await mumu.dispose()
+})
+
+test('有回执端但到点没回执：只认已回执的前缀，和打断一个口径（I2）', async () => {
+  const io = new IO({ bus: new Bus(), log: new SessionLog(), wake: () => {}, options: { settleTimeoutMs: 20 } })
+  io.connect({ name: 's', capabilities: { deliveredReport: true }, onExpression: () => {} })
+  const u = io.utter({ actionId: 'a#1', signal: new AbortController().signal })
+  await u.write('你好呀')
+  io.reportDelivered(u.id, 1)
+  const r = await u.end()
+  assert.deepEqual([r.delivered, r.truncated, r.cause], ['你', true, 'settle-timeout'])
+})
+
+test('角色绑定：同一角色绑两次大声失败；disposer 只撤自己那份', () => {
+  const gw = new ModelGateway(new SessionLog())
+  const off = gw.bind('default', { provider: 'p', model: 'm' })
+  assert.throws(() => gw.bind('default', { provider: 'q', model: 'm' }), /already bound/)
+  off()
+  const off2 = gw.bind('default', { provider: 'q', model: 'm' })
+  off()
+  assert.equal(gw.resolve('default').provider, 'q', '旧 disposer 再跑一次不影响新绑定')
+  off2()
 })

@@ -79,7 +79,7 @@ test('waterfall：next 重复调用抛错', async () => {
     await next()
     return next() // 第二次必须炸
   })
-  await assert.rejects(bus.waterfall('y', {}, async p => p), /重复调用/)
+  await assert.rejects(bus.waterfall('y', {}, async p => p), /called twice/)
 })
 
 test('emit：单个坏监听器不影响其他监听器', () => {

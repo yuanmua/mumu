@@ -19,7 +19,13 @@ export interface KernelOptions extends MindOptions, IOOptions {
 }
 
 export class Mumu {
-  readonly container = new Container()
+  // 插件 apply 抛错进日志：装配层据此把它标成失败，UI 也看得见
+  readonly container = new Container({
+    onFailed: (name, error) => {
+      this.log.append('plugin.failed', { name, error: error instanceof Error ? error.message : String(error) })
+    },
+  })
+
   readonly bus = new Bus()
   readonly log: SessionLog
   readonly model: ModelGateway
@@ -94,7 +100,7 @@ export class Mumu {
     const un = this.container.unresolved()
     if (un.length) {
       throw new Error(
-        `插件依赖未满足: ${un.map(u => `${u.name} 缺 ${u.missing.join(',')}`).join('; ')}`,
+        `unresolved dependencies: ${un.map(u => `${u.name} needs ${u.missing.join(', ')}`).join('; ')}`,
       )
     }
   }
@@ -129,9 +135,9 @@ export class Mumu {
         if (it.do === 'start')
           this.actions.start(it.action, it.params ?? {}, it.channel)
         else if (it.do === 'send' && !this.actions.send(it.to, it.message))
-          throw new KernelError('no-target', `没有运行中的 ${it.to}`)
+          throw new KernelError('no-target', `no running action: ${it.to}`)
         else if (it.do === 'stop' && !this.actions.stop(it.target, it.reason ?? 'decider-stop'))
-          throw new KernelError('no-target', `没有运行中的 ${it.target}`)
+          throw new KernelError('no-target', `no running action: ${it.target}`)
         return p
       },
     )

@@ -31,9 +31,13 @@ export class Container {
   private loaded = new Map<string, Loaded>()
   private pending: { plugin: Plugin, config: unknown }[] = []
 
+  constructor(private deps: {
+    onFailed?: (name: string, error: unknown) => void // 任一插件 apply 抛错都报，含被别的 load 顺手激活的等待者
+  } = {}) {}
+
   registerService(key: string, service: unknown): Disposer {
     if (this.services.has(key))
-      throw new Error(`服务 ${key} 已存在`)
+      throw new Error(`service already registered: ${key}`)
     this.services.set(key, service)
     return () => { this.services.delete(key) }
   }
@@ -41,7 +45,7 @@ export class Container {
   get<T>(key: string): T {
     const s = this.services.get(key)
     if (s === undefined)
-      throw new Error(`服务 ${key} 不存在（插件是否忘了声明 inject？）`)
+      throw new Error(`service not found: ${key}`)
     return s as T
   }
 
@@ -51,13 +55,17 @@ export class Container {
 
   async load(plugin: Plugin, config?: unknown): Promise<void> {
     if (this.loaded.has(plugin.name) || this.pending.some(p => p.plugin.name === plugin.name))
-      throw new Error(`插件 ${plugin.name} 已加载`)
+      throw new Error(`plugin already registered: ${plugin.name}`)
     this.pending.push({ plugin, config })
-    await this.flush()
+    // 只为自己的失败抛错：顺手激活的等待者出错归它自己（onFailed），不能记在触发 flush 的这个头上
+    const own = (await this.flush()).find(f => f.name === plugin.name)
+    if (own)
+      throw own.error
   }
 
-  /** 反复激活依赖已就绪的插件，直到没有进展；provide 新服务会解锁等待者 */
-  private async flush(): Promise<void> {
+  /** 反复激活依赖已就绪的插件，直到没有进展；provide 新服务会解锁等待者。返回这一轮里 apply 抛错的 */
+  private async flush(): Promise<{ name: string, error: unknown }[]> {
+    const failed: { name: string, error: unknown }[] = []
     let progressed = true
     while (progressed) {
       progressed = false
@@ -77,12 +85,15 @@ export class Container {
           await p.plugin.apply(new Ctx(this, rec), p.config)
         }
         catch (e) {
-          await this.unload(p.plugin.name) // 失败的插件不留半成品
-          throw e
+          await this.unload(p.plugin.name) // 失败的插件不留半成品；别的等待者照常激活
+          failed.push({ name: p.plugin.name, error: e })
+          this.deps.onFailed?.(p.plugin.name, e)
+          continue
         }
         progressed = true
       }
     }
+    return failed
   }
 
   /** 依赖未满足的插件；装配完成后应为空 */
@@ -105,7 +116,7 @@ export class Container {
         d()
       }
       catch (e) {
-        console.error(`[container] ${name} 清理失败:`, e)
+        console.error(`[container] disposer failed: ${name}:`, e)
       }
     }
   }

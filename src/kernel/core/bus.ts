@@ -30,7 +30,7 @@ export class Bus {
         fn(payload)
       }
       catch (e) {
-        console.error(`[bus] 监听器出错 ${event}:`, e)
+        console.error(`[bus] listener failed: ${event}:`, e)
       }
     }
   }
@@ -57,7 +57,7 @@ export class Bus {
       let called = false
       return chain[i](payload, () => {
         if (called)
-          throw new Error(`waterfall ${name}: next() 被重复调用`)
+          throw new Error(`next() called twice: ${name}`)
         called = true
         return run(i + 1)
       })

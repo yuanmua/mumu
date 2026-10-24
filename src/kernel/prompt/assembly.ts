@@ -37,7 +37,7 @@ interface Temp {
 
 export class PromptAssembly {
   /** 插件贡献的段落，按受众与顺序组装 */
-  readonly sections = new Registry<Section>('段落', s => s.id)
+  readonly sections = new Registry<Section>('section', s => s.id)
   private temps: Temp[] = []
 
   /** 等价 sections.add */
@@ -62,7 +62,7 @@ export class PromptAssembly {
           parts.push(text.trim())
       }
       catch (e) {
-        console.error(`[prompt] 段落 ${s.id} 渲染失败:`, e)
+        console.error(`[prompt] section render failed: ${s.id}:`, e)
       }
     }
     return parts.join('\n\n')

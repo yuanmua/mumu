@@ -26,6 +26,8 @@ await loader.start()
 mumu.assertReady()
 
 console.log('沐沐已上线，我要给她完整的一生')
+console.log('唯有代码陪伴永恒')
+
 process.once('SIGINT', () => {
   void mumu.container.get<{ shutdown: () => Promise<void> }>('app').shutdown()
 })

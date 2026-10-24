@@ -5,14 +5,18 @@
  * 启动分两段：引导段（order < 0）只拿清单 defaults 当配置；
  * 常规段在配置库就绪后读启用覆盖、下发插件配置。
  * 热重载 = 带序号的动态 import 绕过 ESM 缓存（序号经 resolve 钩子传到插件目录内的子模块，见 fresh.ts）
- * + 容器卸载重装。重载一个服务提供者时，注入了它的服务的插件一并重载（否则它们手里是旧服务）。
+ * + 容器卸载重装。卸掉一个服务提供者时，注入了它的服务的插件一并卸下、再挂回等待队列：服务回来即自动装上，
+ * 期间 list() 看得见它们在等什么（否则它们手里是旧服务，如关掉的 db 句柄）。
+ * 重载、启停、重扫串行执行：第二个进来时第一个还卡在 apply 里，会报「已加载」的假失败。
  *
  * 失败隔离：单个插件加载失败只跳过它、大声报错并记下原因（list() 的 error），不拖垮启动；
  * 它的目录照样被监视，改好文件即重试。scan() 在运行中重扫目录，新出现的插件不重启就能装上。
+ * 插件「有毛病」只有一个口径（problem()）：加载 / 重载失败的原因，或装上了但 inject 的服务还没有；
+ * list()、scan()、抛给调用方的错都是这一句。没有悄悄退化：重扫清单失败就报错，不沿用旧清单。
  */
 import type { FSWatcher } from 'node:fs'
 import { watch } from 'node:fs'
-import type { Disposer, Mumu, Plugin } from '../kernel/index.ts'
+import type { Disposer, LogEvent, Mumu, Plugin } from '../kernel/index.ts'
 import { installFreshHooks, versionedEntry } from './fresh.ts'
 import type { PluginManifest } from './manifest.ts'
 import { scanPlugins } from './manifest.ts'
@@ -47,6 +51,8 @@ export class PluginLoader {
   private watchedConfig?: ConfigService // 订阅挂在哪个配置服务实例上；存储插件重载后会换实例
   private importSeq = 0
   private failures = new Map<string, string>() // 加载失败的插件 → 原因
+  private failWatch?: Disposer
+  private ops = Promise.resolve() // 重载 / 启停 / 重扫的串行队列
 
   constructor(
     private mumu: Mumu,
@@ -55,6 +61,11 @@ export class PluginLoader {
 
   async start(): Promise<void> {
     this.mumu.container.registerService('loader', this)
+    // 等依赖的插件被别的 load 顺手激活时 apply 抛错，错归它自己：按日志里的 plugin.failed 把它标成失败
+    this.failWatch = this.mumu.bus.on<LogEvent>('log.appended', (e) => {
+      if (e.type === 'plugin.failed')
+        this.onPluginFailed(e.data.name, e.data.error)
+    })
     for (const m of await scanPlugins(this.opts.dir ?? 'plugins'))
       this.manifests.set(m.id, m)
 
@@ -79,7 +90,11 @@ export class PluginLoader {
    * 运行中重扫插件目录：新出现的插件按 order 装上，之前装失败的（清单可能已修好）再试一次。
    * 已登记的插件不动；目录被删的插件不自动卸载（要卸用 setEnabled）。id 冲突照旧大声失败、一个都不装。
    */
-  async scan(): Promise<ScanResult> {
+  scan(): Promise<ScanResult> {
+    return this.serial(() => this.scanNow())
+  }
+
+  private async scanNow(): Promise<ScanResult> {
     const found = await scanPlugins(this.opts.dir ?? 'plugins')
     const added: string[] = []
     for (const m of found) {
@@ -102,21 +117,44 @@ export class PluginLoader {
     return result
   }
 
-  /** 加载并隔离失败：返回错误原因（成功为 undefined）。失败的也监视目录，改好即重试 */
+  /** 加载并隔离失败：返回毛病（成功为 undefined）。失败的也监视目录，改好即重试 */
   private async tryLoad(id: string): Promise<string | undefined> {
     try {
       await this.load(id)
-      const m = this.loaded.get(id)
-      const waiting = m && this.mumu.container.unresolved().find(u => u.name === m.plugin.name)
-      if (waiting)
-        return `依赖的服务不存在：${waiting.missing.join('、')}（装上提供它的插件后自动生效）`
-      return undefined
+      return this.problem(id)
     }
     catch (e) {
       const error = e instanceof Error ? e.message : String(e)
-      console.error(`✗ 插件 ${id} 加载失败，已跳过:`, error)
+      console.error(`[loader] load failed, skipped: ${id}:`, error)
       return error
     }
+  }
+
+  /**
+   * 这个插件现在的毛病：加载 / 重载失败的原因，或装上了但 inject 的服务还没有。
+   * list() 与 scan() 都从这一处取，两边说的是同一句。
+   */
+  private problem(id: string): string | undefined {
+    const failed = this.failures.get(id)
+    if (failed)
+      return failed
+    const rec = this.loaded.get(id)
+    const waiting = rec && this.mumu.container.unresolved().find(u => u.name === rec.plugin.name)
+    return waiting ? `waiting for services: ${waiting.missing.join(', ')}` : undefined
+  }
+
+  private onPluginFailed(name: string, error: string): void {
+    const rec = [...this.loaded.values()].find(r => r.plugin.name === name)
+    if (!rec)
+      return // 自己 load() 的那个由 load 的 catch 处理
+    this.loaded.delete(rec.manifest.id)
+    this.failures.set(rec.manifest.id, error) // 目录仍在监视，改好即重试
+  }
+
+  private serial<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.ops.then(fn, fn)
+    this.ops = run.then(() => {}, () => {})
+    return run
   }
 
   private config(): ConfigService | undefined {
@@ -151,8 +189,8 @@ export class PluginLoader {
       if (!m || m[2] === 'enabled' || !this.loaded.has(m[1]))
         return
       this.reload(m[1]).then(
-        () => console.log(`✓ ${m[1]} 已按新配置重载`),
-        e => console.error(`✗ ${m[1]} 重载失败:`, e instanceof Error ? e.message : e),
+        () => console.log(`[loader] reloaded after config change: ${m[1]}`),
+        e => console.error(`[loader] reload failed: ${m[1]}:`, e instanceof Error ? e.message : e),
       )
     })
   }
@@ -163,14 +201,14 @@ export class PluginLoader {
     const mod = await import(versionedEntry(m.entry, ++this.importSeq))
     const plugin = mod.default as Plugin | undefined
     if (!plugin || typeof plugin.apply !== 'function' || !plugin.name)
-      throw new Error(`插件 ${m.id} 的入口必须 default 导出 Plugin 对象`)
+      throw new Error(`entry does not default-export a Plugin: ${m.entry}`)
     return plugin
   }
 
   async load(id: string): Promise<void> {
     const m = this.manifests.get(id)
     if (!m)
-      throw new Error(`未知插件: ${id}`)
+      throw new Error(`unknown plugin: ${id}`)
     if (this.loaded.has(id))
       return
     let plugin: Plugin
@@ -190,11 +228,13 @@ export class PluginLoader {
     this.failures.delete(id)
     if (this.opts.watch !== false)
       this.watchOne(m)
-    // 存储插件被重载后配置服务换了新实例：订阅要跟过去，否则之后的 /config set 都不再触发重载（实测踩过）
-    if (this.watchedConfig && this.config() !== this.watchedConfig)
+    // 存储插件被重载后配置服务换了新实例：订阅要跟过去，否则之后的 /config set 都不再触发重载（实测踩过）。
+    // 配置服务缺席期间装过插件、它再回来，也一样要跟上
+    if (this.config() !== this.watchedConfig)
       this.watchConfig()
   }
 
+  /** 卸载；它提供的服务随之消失，inject 了这些服务的插件一并卸下再挂回等待队列，服务回来即自动装上 */
   async unload(id: string): Promise<void> {
     const rec = this.loaded.get(id)
     if (!rec)
@@ -203,48 +243,63 @@ export class PluginLoader {
     this.watchers.get(id)?.close()
     this.watchers.delete(id)
     await this.mumu.container.unload(rec.plugin.name)
+    const orphans = this.orphans()
+    for (const d of orphans)
+      await this.unload(d)
+    for (const d of orphans)
+      await this.tryLoad(d)
   }
 
-  /**
-   * 重新 import 并按当前配置库重新解析配置。
-   * 它提供的服务随卸载消失：注入了这些服务的插件手里拿的是旧对象（如关掉的 db 句柄），
-   * 所以按 inject 图把它们一并卸下，等它装好后再按原次序装回。
-   */
-  async reload(id: string): Promise<void> {
+  /** 重新 import 并按当前配置库重新解析配置；依赖它的插件随 unload 挂回等待队列、随它装好自动装回 */
+  reload(id: string): Promise<void> {
+    return this.serial(() => this.reloadNow(id))
+  }
+
+  private async reloadNow(id: string): Promise<void> {
+    if (!this.manifests.has(id))
+      throw new Error(`unknown plugin: ${id}`)
+    // 清单也重读：改了 package.json 的 defaults / main 不必重启。
+    // 重扫失败（id 冲突、清单坏了、目录没了）不悄悄沿用旧清单：记下原因、这次不重载，
+    // 插件照旧跑旧代码，list() 看得见为什么；目录还在监视，改好那一下再试
+    let fresh: PluginManifest | undefined
+    try {
+      fresh = (await scanPlugins(this.opts.dir ?? 'plugins')).find(m => m.id === id)
+    }
+    catch (e) {
+      throw this.fail(id, `rescan failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    if (!fresh)
+      throw this.fail(id, `plugin not found on rescan: ${id}`)
+    this.manifests.set(id, fresh)
     const wasLoaded = this.loaded.has(id)
     await this.unload(id)
-    // 清单也重读：改了 package.json 的 defaults / main 不必重启（重扫失败就沿用旧清单）
-    const fresh = await scanPlugins(this.opts.dir ?? 'plugins').then(all => all.find(m => m.id === id), () => undefined)
-    if (fresh)
-      this.manifests.set(id, fresh)
-    const dependents: string[] = []
-    for (let orphans = this.orphans(); orphans.length; orphans = this.orphans()) {
-      for (const d of orphans) {
-        dependents.push(d)
-        await this.unload(d)
-      }
-    }
-    if (wasLoaded || this.effectiveEnabled(this.manifests.get(id)!))
+    if (wasLoaded || this.effectiveEnabled(fresh))
       await this.load(id)
-    for (const d of dependents) {
-      const error = await this.tryLoad(d)
-      if (!error)
-        console.log(`  ↻ ${d} 依赖 ${id} 的服务，已随之重载`)
-    }
   }
 
-  /** 已加载、但 inject 的服务现在不在容器里的插件 */
+  /** 记下毛病并造出要抛的错：list() 与抛给调用方的是同一句 */
+  private fail(id: string, error: string): Error {
+    this.failures.set(id, error)
+    return new Error(error)
+  }
+
+  /** 已装上、但 inject 的服务现在不在容器里的插件（还在等待队列里的不算，它们本来就在等） */
   private orphans(): string[] {
+    const waiting = new Set(this.mumu.container.unresolved().map(u => u.name))
     return [...this.loaded.values()]
-      .filter(r => (r.plugin.inject ?? []).some(k => !this.mumu.container.has(k)))
+      .filter(r => !waiting.has(r.plugin.name) && (r.plugin.inject ?? []).some(k => !this.mumu.container.has(k)))
       .map(r => r.manifest.id)
   }
 
   /** 启停持久化到配置库并立即生效 */
-  async setEnabled(id: string, on: boolean): Promise<void> {
+  setEnabled(id: string, on: boolean): Promise<void> {
+    return this.serial(() => this.setEnabledNow(id, on))
+  }
+
+  private async setEnabledNow(id: string, on: boolean): Promise<void> {
     const m = this.manifests.get(id)
     if (!m)
-      throw new Error(`未知插件: ${id}`)
+      throw new Error(`unknown plugin: ${id}`)
     this.config()?.set(`plugins.${id}.enabled`, on)
     if (on && !this.loaded.has(id))
       await this.load(id)
@@ -260,7 +315,7 @@ export class PluginLoader {
       enabled: this.effectiveEnabled(m),
       order: m.order,
       description: m.description,
-      error: this.failures.get(m.id),
+      error: this.problem(m.id),
     }))
   }
 
@@ -281,17 +336,17 @@ export class PluginLoader {
           return
         clearTimeout(timer)
         timer = setTimeout(() => {
-          console.log(`↻ 插件 ${m.id} 文件变更，热重载…`)
+          console.log(`[loader] files changed, reloading: ${m.id}`)
           this.reload(m.id).then(
-            () => console.log(`✓ ${m.id} 已重载`),
-            e => console.error(`✗ ${m.id} 重载失败:`, e instanceof Error ? e.message : e),
+            () => console.log(`[loader] reloaded: ${m.id}`),
+            e => console.error(`[loader] reload failed: ${m.id}:`, e instanceof Error ? e.message : e),
           )
         }, 400)
       })
       this.watchers.set(m.id, w)
     }
     catch (e) {
-      console.warn(`[loader] 无法监视 ${m.id}:`, e instanceof Error ? e.message : e)
+      console.warn(`[loader] watch failed: ${m.id}:`, e instanceof Error ? e.message : e)
     }
   }
 
@@ -300,5 +355,7 @@ export class PluginLoader {
     this.watchers.clear()
     this.configWatch?.()
     this.configWatch = undefined
+    this.failWatch?.()
+    this.failWatch = undefined
   }
 }

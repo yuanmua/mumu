@@ -57,21 +57,26 @@ export class ModelGateway {
 
   registerProvider(p: ProviderAdapter): Disposer {
     if (this.providers.has(p.name))
-      throw new Error(`provider ${p.name} 已注册`)
+      throw new Error(`provider already registered: ${p.name}`)
     this.providers.set(p.name, p)
     return () => { this.providers.delete(p.name) }
   }
 
   /** 'default' 是所有角色的基底，具体角色在其上覆盖 */
   bind(role: string, binding: Partial<RoleBinding>): Disposer {
+    if (this.bindings.has(role))
+      throw new Error(`role already bound: ${role}`)
     this.bindings.set(role, binding)
-    return () => { this.bindings.delete(role) }
+    return () => {
+      if (this.bindings.get(role) === binding)
+        this.bindings.delete(role)
+    }
   }
 
   resolve(role: string): RoleBinding {
     const merged = { ...this.bindings.get('default'), ...this.bindings.get(role) }
     if (!merged.provider || !merged.model)
-      throw new Error(`角色 ${role} 没有完整的模型绑定（缺 provider/model，检查配置 roles.default）`)
+      throw new Error(`role has no provider/model: ${role}`)
     return merged as RoleBinding
   }
 
@@ -80,7 +85,7 @@ export class ModelGateway {
     const binding = this.resolve(req.role)
     const provider = this.providers.get(binding.provider)
     if (!provider)
-      throw new Error(`provider ${binding.provider} 未注册`)
+      throw new Error(`provider not registered: ${binding.provider}`)
     const { data: { reqId } } = this.log.appendNew('req', 'model.request', reqId => ({
       reqId,
       role: req.role,
@@ -97,7 +102,7 @@ export class ModelGateway {
       for await (const chunk of provider.stream({ binding, messages: req.messages, signal: req.signal })) {
         this.hooks.onStream?.({ reqId, at: Date.now(), chunk })
         if (chunk.type === 'usage') {
-          usage = chunk
+          usage = { prompt: chunk.prompt, completion: chunk.completion }
           continue
         }
         if (chunk.type === 'done')

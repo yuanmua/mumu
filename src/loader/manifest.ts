@@ -30,7 +30,7 @@ export async function scanPlugins(pluginsDir: string): Promise<PluginManifest[]>
 
   async function walk(dir: string, depth: number): Promise<void> {
     if (depth > MAX_DEPTH) {
-      console.warn(`[loader] 目录过深，停止扫描: ${relative(root, dir)}`)
+      console.warn(`[loader] too deep (max ${MAX_DEPTH}), skipped: ${relative(root, dir)}`)
       return
     }
     const entries = await readdir(dir, { withFileTypes: true }).catch(() => [])
@@ -59,11 +59,17 @@ export async function scanPlugins(pluginsDir: string): Promise<PluginManifest[]>
         })
       }
       catch (e) {
-        console.warn(`[loader] 跳过无效插件目录 ${relative(root, sub)}:`, e instanceof Error ? e.message : e)
+        console.warn(`[loader] invalid plugin dir, skipped: ${relative(root, sub)}:`, e instanceof Error ? e.message : e)
       }
     }
   }
 
+  try {
+    await readdir(root)
+  }
+  catch (e) {
+    throw new Error(`cannot read plugins dir: ${root}: ${e instanceof Error ? e.message : String(e)}`)
+  }
   await walk(root, 0)
 
   // id 是配置与命令的键，重名必须报错，否则配置会串到另一个插件
@@ -71,10 +77,7 @@ export async function scanPlugins(pluginsDir: string): Promise<PluginManifest[]>
   for (const m of found) {
     const dup = byId.get(m.id)
     if (dup) {
-      throw new Error(
-        `插件 id 冲突: "${m.id}" 同时来自 ${relative(root, dup.dir)} 与 ${relative(root, m.dir)}。`
-        + `改其中一个的 package.json name 或 mumu.id。`,
-      )
+      throw new Error(`duplicate plugin id "${m.id}": ${relative(root, dup.dir)}, ${relative(root, m.dir)}`)
     }
     byId.set(m.id, m)
   }

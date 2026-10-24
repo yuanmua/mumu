@@ -35,7 +35,7 @@ export function installFreshHooks(): void {
   // @types/node 的版本可能还没收录 registerHooks，按运行时实际有没有来
   const register = (nodeModule as unknown as { registerHooks?: RegisterHooks }).registerHooks
   if (typeof register !== 'function')
-    throw new Error(`热重载需要 Node 22.15+（module.registerHooks），当前 ${process.version}`)
+    throw new Error(`hot reload requires Node 22.15+ (module.registerHooks), running ${process.version}`)
   installed = true
   register({
     resolve(specifier, context, next) {

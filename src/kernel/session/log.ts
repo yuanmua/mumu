@@ -55,7 +55,7 @@ export class SessionLog {
 
     if (this.events_.length === 0) {
       this.events_ = stored
-      this.seq = maxStored
+      this.seq = Math.max(this.seq, maxStored) // reset 后再挂存储（库已清空）序号不能倒回，否则 id 会撞上还在跑的
       this.store = store
       this.writeOpened() // 段首落在存量之后、孤儿恢复之前
       this.recoverOrphans()
@@ -68,7 +68,7 @@ export class SessionLog {
       this.store = store
     }
     else {
-      console.warn('[log] 检测到平行历史，重编内存事件接续存量')
+      console.warn('[log] history diverged from store, renumbering in-memory events')
       let next = maxStored
       for (const e of this.events_) {
         e.seq = ++next
@@ -141,14 +141,14 @@ export class SessionLog {
     }
     catch (err) {
       // 落盘失败不打断角色，但要看得见
-      console.error('[log] 持久化失败:', err)
+      console.error('[log] store append failed:', err)
     }
     try {
       this.deps.onAppend?.(e)
     }
     catch (err) {
       // 观察者出错不能污染真源写入
-      console.error('[log] onAppend 观察者出错:', err)
+      console.error('[log] onAppend observer failed:', err)
     }
     return e
   }
@@ -168,13 +168,13 @@ export class SessionLog {
       this.store?.clear?.()
     }
     catch (err) {
-      console.error('[log] 持久层清空失败:', err)
+      console.error('[log] store clear failed:', err)
     }
     try {
       this.deps.onReset?.()
     }
     catch (err) {
-      console.error('[log] reset 连带清理出错:', err)
+      console.error('[log] onReset hook failed:', err)
     }
   }
 

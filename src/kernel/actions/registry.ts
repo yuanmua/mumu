@@ -35,7 +35,7 @@ export interface ActionRun {
   inbox: AsyncQueue<string> // decider send 来的消息
   note: (text: string) => void // 更新给 decider 看的一句话现状
   utter: (opts?: UtterOptions) => Utterance // 开一条发声流，含送达回执
-  remember: (text: string, opts?: { beats?: number, minMs?: number }) => void
+  remember: (text: string, opts?: { beats?: number, minMs?: number, data?: Record<string, unknown> }) => void
 }
 
 export interface ActionType {
@@ -59,14 +59,14 @@ interface Instance {
 
 export class ActionRegistry {
   /** 插件贡献的动作类型 */
-  readonly types = new Registry<ActionType>('动作', t => t.name)
+  readonly types = new Registry<ActionType>('action', t => t.name)
   private running = new Map<string, Instance>()
 
   constructor(private deps: {
     log: SessionLog
     wake: (source: string, text: string, data: Record<string, unknown>) => void
     utter: (owner: { actionId: string, signal: AbortSignal, channel?: string }, opts?: UtterOptions) => Utterance
-    remember: (text: string, opts: { source: string, beats?: number, minMs?: number }) => void
+    remember: (text: string, opts: { source: string, beats?: number, minMs?: number, data?: Record<string, unknown> }) => void
   }) {}
 
   register(type: ActionType): Disposer {
@@ -106,7 +106,7 @@ export class ActionRegistry {
   start(name: string, params: Record<string, unknown> = {}, channel?: string): string {
     const type = this.types.get(name)
     if (!type)
-      throw new KernelError('unknown-action', `未知动作: ${name}`)
+      throw new KernelError('unknown-action', `unknown action: ${name}`)
     const { data: { id } } = this.deps.log.appendNew(name, 'action.started', id => ({ id, type: name, params, channel }))
     const controller = new AbortController()
     const inbox = new AsyncQueue<string>()
@@ -145,7 +145,7 @@ export class ActionRegistry {
       (e) => {
         if (controller.signal.aborted)
           return this.settle(ins, 'stopped')
-        console.error(`[actions] ${id} 出错:`, e)
+        console.error(`[actions] run failed: ${id}:`, e)
         this.settle(ins, 'error', e instanceof Error ? e.message : String(e))
       },
     )

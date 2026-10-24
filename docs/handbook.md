@@ -81,7 +81,7 @@ mumu/
    内核是独立的一块：内部怎么分目录、怎么重构都不外溢。
    往内核加机制时在 `kernel/index.ts` 补一行导出即可，`src/index.ts` 不用动。
 2. **插件只从 `src/index.ts` 导入** —— 不许绕到 `src` 内部任何文件。
-3. **`apps/` 不许 import `src/`** —— 浏览器端只认 [web-protocol.md](web-protocol.md)。
+3. **`apps/` 不许 import `src/`** —— 浏览器端只认 `web-protocol.md`（在 bridge 分支）。
 
 三条都有测试兜底，越界会红。
 
@@ -111,8 +111,9 @@ mumu/
 内核最重要的纪律：**输入与输出同样开放**。
 
 ```
-Percept { kind: string, channel?, sender?, text?, urgent?, data? }   ← 进
-Part    { kind: string, text?, data? }                               ← 出
+Percept { kind: string, channel?, sender?, text?, urgent?, parts?: Part[], data? }   ← 进
+Part    { kind: string, text?, data?, ...MediaFields }                              ← 出；也是进的片段
+MediaFields { mime?, ref?, bytes?, durationMs? }   非文本载荷：本体在 BlobStore，这里只记 ref
 ```
 
 `kind` 两边都是**自由字符串**，语义由插件定义。内核不认识 message / danmaku / vision / image / card / game.cmd 中的任何一个。
@@ -126,7 +127,7 @@ Part    { kind: string, text?, data? }                               ← 出
 
 一次性输入用 `io.percept()`，不必开流；流式输入用 `io.perceive()` 拿句柄。
 **`update` 是修订不是追加**（ASR partial 后一次覆盖前一次）——修订能表达追加，反之不能。
-音频/视频帧不进内核：表现端做完 ASR 再流文本进来，与「内核流文本、TTS 在表现端」同一层分工。
+音频/视频的原始帧不进内核：本体存 BlobStore，片段里只带 `ref`；要流文本的（ASR）由表现端做完再流进来，与「内核流文本、TTS 在表现端」同一层分工。
 
 **表现端不认识的 `Part.kind` 直接忽略** —— 这就是能力降级的全部规则，没有第二条。
 
@@ -156,57 +157,65 @@ Part    { kind: string, text?, data? }                               ← 出
 流式输入的唤醒**按需**：`update(text, { wake: true })` 才开一拍，默认不唤醒——
 否则每个字一拍会烧钱。什么时候值得唤醒（停顿、关键词、说太久）是表现端/插件的策略。
 
-### 5.3 三条日志不变量
+### 5.4 三条日志不变量
 
 - **I1** 模型可见 ⟺ 已记录（进模型请求的东西必须能从日志重建）
 - **I2** 说出去的 ⟺ 记录**实际送达的部分**（打断记 delivered 前缀，不记生成全文）
 - **I3** `action.started` 必有 `action.ended`（孤儿恢复为 interrupted，并变成角色的"自我察觉"）
 
-### 5.4 渲染归消费方
+### 5.5 渲染归消费方
 
 内核**一句中文都不拼**，只出结构化数据：
 
 | 内核给 | 谁渲染 |
 |---|---|
-| `WakeReason { source, text, channel?, sender? }` | mind-default 的 `reasonLine` |
-| `Note { source, text, elapsedMs }` | `shared/renderNotes`（可选用，也可自己写） |
+| `WakeReason { source, text, data?, channel?, sender? }` | mind-default 的 `reasonLine` |
+| `Note { source, text, data?, elapsedMs }` | `shared/renderNotes`（可选用，也可自己写） |
 | `HistoryTurn { role, kind, sender?, channel }` | mind-default `turnLine` / action-reply `toMessage` |
 
-### 5.5 命名
+内核**自己**发的唤醒与工作记忆，`text` 只是短代码，细节在 `data.code` 及其字段（全表见 [kernel.md](kernel.md)「渲染归消费方」）。
+
+### 5.6 命名
 
 - **channel** = 会话频道（`main` / `group:123` / `danmaku`）
 - **track** = marker 通道（`emo` / `act` / `tool`）
 
 两者**绝不混用**。曾经撞名过，改掉了。
 
-### 5.6 无全局可变态
+### 5.7 无全局可变态
 
 频道随意图流转：`Intent.channel` → `ActionRun.channel` → `utter()`。
 解析链纯结构：**显式 > 动作自己的 > 缺省 main**。
 
 曾经有过 `IO.activeChannel` 全局单值，多频道并发会串台，已删除。**不要再引入这类"最近一次…"的全局态。**
 
-### 5.7 无硬编码可调参数
+### 5.8 无硬编码可调参数
 
 部署可变的数值全在 `KernelOptions`（`Mumu.create(options)` 的编程参数）：
-`historyLimit` · `cooldownMs` · `backoffBaseMs` · `backoffMaxMs` · `emptyFuse` · `settleTimeoutMs`
+`historyLimit` · `cooldownMs` · `backoffBaseMs` · `backoffMaxMs` · `emptyFuse` · `decideTimeoutMs` · `settleTimeoutMs` · `perceptionTimeoutMs`
 
 （`DEFAULT_*` 常量不算可配置性。）
 
-### 5.8 降级永远比崩溃好，且降级必须可见
+### 5.9 降级永远比崩溃好，且降级必须可见
 
 | 出错位置 | 处理 |
 |---|---|
 | 段落渲染抛错 | 缺那一段，`console.error`，其余照常 |
 | 事件监听器抛错 | 隔离，不影响其他监听器与发射方 |
 | 表现端抛错 | 隔离，其他端照常收 |
-| 动作崩溃 | 实例进 error → **作为感知回报主大脑** |
-| decider 输出不合形态 | 重试一次 → 再失败空意图 + 日志 |
+| 动作崩溃 | 实例进 error → **作为唤醒原因回报主大脑** |
+| decider 抛错 / 超时 | 本拍按空决策走，记 `beat.decide-failed` / `beat.decide-timeout`；内核不重试（重试归大脑插件） |
+| 汇聚材料抛错 | 作废本拍、不重试，记 `beat.failed` |
+| 拦截器抛错 | 感知按默认路由走（`percept.route-error`）、发声按原样送出（`expression.route-error`） |
+| 意图派发失败 | 记 `intent.dispatch-failed { code }`，其余意图照常 |
+| 插件 apply 抛错 | 卸掉它、不留半成品，记 `plugin.failed`；其余照常装配 |
 | 落盘失败 | 不打断角色，但 `console.error` |
 
 ---
 
 ## 6. 扩展点全表
+
+> 内核自己的扩展点是四条水线、两个观察事件、七个服务键（[architecture-paper.md](architecture-paper.md) §9）；表里其余的是 bridge 分支插件的约定。
 
 ### waterfall（改一切 / 插件改插件的落点）
 
@@ -285,7 +294,7 @@ plugins/                        任意分层归类，层数不限
 | 配置改动自动重载 | `/config set plugins.<id>.…` → 装配层精确重载该插件（`.enabled` 除外） |
 | 热重载范围 | 入口与插件目录内的子模块一起刷新（`src/loader/fresh.ts` 的 resolve 钩子，需 ESM 插件 + Node 22.15+）；`src/` 与别的插件不重复实例化；新增插件目录 `/plugin scan` 即装上；文件指纹没变的监视事件不算；重载服务提供者连带重载注入它的插件；单个插件装不上只跳过它（`/plugins` 显示原因） |
 
-### 官方插件（都在 `plugins/official/` 下，2026-10-12 第二版）
+### 官方插件（都在 `bridge` 分支的 `plugins/official/` 下，2026-10-12 第二版）
 
 > 叫法（2026-10-22 起）：**大脑 = `mind-default` 插件**（旧称「导演」），**脊椎 = `reflex` 插件**（旧称「反射」）。
 > 只改叫法：插件 id、事件名（`reflex.*`）、模型角色（`mind.decide`、`performer.reflex`）、配置键一律不动。下文 2026-10-22 之前的记录保留当时的叫法。
@@ -299,7 +308,7 @@ plugins/                        任意分层归类，层数不限
 | mind-default | 0 | **大脑**（旧称导演）：单级决策，每条消息都先到这里（大脑门控）：`quick:true` 放行脊椎秒回一条短的、start reply 带想法、应一声并起动作，或不回；思考可被新输入作废，被作废那拍的原因全部带到下一拍并标「想到一半被打断」；规则与动作目录放 system 最前（前缀缓存），每拍都带全频道的最近对话（「精简拍」同日撤销，见 §9.3）；结果感知已经处理过的动作，它结束的那次唤醒不再单独想（`reported.ts`，免得把后续动作再做一遍）；最近几张图看原图（服务 `images`，占位编号「[图片1]」、原图附在末尾）；落 `mind.decision` |
 | reflex | 0 | **脊椎**（旧称反射）：不抢先开口。私聊合流（对方停下再叫醒大脑）；`beat/gather`【脊椎】给大脑贴提示（还在发 / 像要她做事 / 主人说的 / 很简单可 quick）；兜底：白名单里的招呼（纯表情包或 ≤4 字无问号、不像要她做事、不是主人说的）大脑 `fallbackMs` 内没决定就先起一条简短 reply（`reflex.route` path=fallback）；`intent/pre-dispatch` 硬闸保证同频道单回复、她在别处说话时不开口（`busy-elsewhere`，一次只在一个会话里；被拦的念头说完那拍提醒大脑）、合流中不回、兜底之后不再说一遍，同拍动作被 guard 拦下时改 reply 的念头（别说这就去、别说电脑坏了） |
 | action-reply | 0 | 流式发言；marker 通道 emo/act/br/tool；引导放 system 尾部，旁白给开口契机；水线 `reply/prompt`；分段写法归一化（`br.ts`：`<br>`、残缺的 `<\|br>` 之类、换行 → `<\|br\|>`，`newline` 可配；她的历史从 `utterance.part` 找回分段位置插回 `<\|br\|>`）；工作记忆按会话过滤；最近几张图的原图跟着发的那条 user 轮次（服务 `images`，快回不带） |
-| action-computer | 0 | `computer` 动作：`task.agent` 跑 JSON 工具循环，驱动她 Windows 上的身体服务 [`apps/body`](../apps/body/README.md)（PowerShell / UI Automation / 键鼠 / Edge）；每步 `a.note` + 落 `computer.step`，结果以 `computer.result` 感知回报大脑；教发言者与大脑「你有一台电脑」+ `beat/gather`「电脑现状」；`/body`、`/body stop` |
+| action-computer | 0 | `computer` 动作：`task.agent` 跑 JSON 工具循环，驱动她 Windows 上的身体服务 `apps/body`（PowerShell / UI Automation / 键鼠 / Edge）；每步 `a.note` + 落 `computer.step`，结果以 `computer.result` 感知回报大脑；教发言者与大脑「你有一台电脑」+ `beat/gather`「电脑现状」；`/body`、`/body stop` |
 | expression-basic | 0 | 带提示的表情/动作词汇 + 放置教学 + `<\|br\|>` 分段 |
 | emotion | 0 | 情绪状态（`emotion`）：自表达推动、随时间回落；段落 + 材料块 + `emotion.changed` |
 | persona | 0 | 人格段落（所有受众，**最前**；有网名 `aliases` 时末尾一句网名与真名）+ 腔调 + **说话的底线**（发言者，**最后**；短；`rules` 可整段替换）+ `web/meta` 报名字与网名 + 水线 `persona/names`（真名 + 网名，给「是不是在叫她」的判定用） |
@@ -307,7 +316,7 @@ plugins/                        任意分层归类，层数不限
 | characters | 0 | 角色包（`/character list\|use`）：人设 + 舞台（live2d / tachie）+ 声音打包成 `characters/<id>/character.json`，切换时写进 persona / tts / surface-web 的配置；`web/meta` 报舞台 |
 | tts | 5 | 语音合成（`tts`）：OpenAI 兼容 `/v1/audio/speech` |
 | surface-cli | 10 | 终端表现端 + `/plugins /plugin /config /log /stream /quit`；有浏览器连着时让位（只留命令），stdin 非 TTY 时不呈现 |
-| surface-web | 10 | Web 传输层：实现 [web-protocol.md](web-protocol.md)，服务全部频道（对话 = 频道），服务 `apps/web/dist`；广播 `web/clients` |
+| surface-web | 10 | Web 传输层：实现 `web-protocol.md`，服务全部频道（对话 = 频道），服务 `apps/web/dist`；广播 `web/clients` |
 | surface-onebot | 10 | QQ 表现端（OneBot v11 正向 WS 连 NapCat，零依赖）：私聊 → `message`，群聊 → `group.message`（@ / 叫名字 → `message` + urgent），戳她 / 撤回 / 进出群 / 加好友 → `qq.*`；按打字节奏分条发、每条发出才回执；`<\|quote\|>` `<\|at:名字\|>`；`vision.read` 看图、语音转文字；最近几张图另存副本、以原图进发言者 / 大脑上下文（`images.inline`：每会话 3 张、15 分钟内、≤2MB，服务 `images` 选图，描述照旧给记忆 / 阅读窗口 / 日志）；动作 `qq.send` `qq.manage` `qq.query` `qq.call`（NapCat 任意接口）；`segments.ts` 是给模拟器的稳定层；表情包经 `stickers` 服务（现取不注入；还在找的表情包在发件箱里占一格）；`/onebot` |
 | stickers | 5 | 表情包：库（群里收 / 网上找 / 主人放，`data/stickers`）、`vision.read` 审核打标（规则可配，看不了就不发）；发不发——对方要就发，平时按心情 × 热度 × 对方刚发没，认真话题和刚发过不发，一条发言最多一张；库里没有按描述联网找（360 图片搜索 / 发表情网，限流，审核过才入库），对方要却找不到给大脑 `sticker.missing`；服务 `stickers` 给 QQ，网页频道自己挂 `surface.media`；发言者 / 大脑材料里有「刚发过什么」「对方在要」；面板「表情包库」（缩略图、禁用 / 删除 / 重审、按描述补库）、状态卡、`/stickers` |
 | group-policy | 0 | 群聊读空气 + 多会话调度：`percept/pre-beat` 给群消息打接话概率（先分「在聊 / 没在聊」两种状态：在聊多聊几句、没在聊偶尔看一眼；再 × 时段表 × 每群覆盖，问句 / 相关 / 接话往上，刷屏 / 表情 / 对聊往下，是她喜欢的话题再 × (1 + `interest.k` × 感兴趣程度)（语义相近度 × 兴趣分，interests 插件给）；带低俗词、机器人说的、同人连问只打折不归零，忙时只回必答）；和她聊上的人接着说不用 @ 也按「在聊」打分（`convo.ts` 正在对话，起点 `followUp`、按她接过几句衰减，在聊 ≠ 每句都接）、没 @ 她的话一律打分没有直通（主人不特殊）、她参与的话题里可以主动接；机器人的话在大脑与发言者的历史里标出来；**内容类的「不接」一条都不写死**：词表、机器人名单只用来给大脑写一行提示（`beat/gather`【读空气】），接不接她自己定；按人累积的脾气（`temper.ts`：反复 @、低俗话冲她说、骂她、让她自证 AI 攒骚扰度，半衰期消气）给大脑形容词、给发言者态度，大脑用动作 `group.ignore` 决定不理 / 拉黑 / 原谅（日志 `temper.ignored`，到期自动恢复，主人不适用，拉黑由 memory 记进印象）；她正在别处说话时群里找她的先排队、说完再回；`beat/gather`「手机上现在的情况」（各会话未读、@、她在哪）；`reply/prompt` 群聊阅读窗口；`/freq`；认群里的其他机器人（名单 + 自动打分）并标上，服务 `bots`（`isBot` / `ignored`）、动作 `group.bot`、`/bot`；面板「脾气（按人）」 |
@@ -432,8 +441,22 @@ plugins/                        任意分层归类，层数不限
 | 容器并发 flush 误删插件 | 两个 load 的 flush 快照里有同一个插件，后到的 `splice(indexOf=-1)` 删掉队尾别的插件、还装两次 | 处理前确认它还在队列里；卸载也撤掉还在等依赖的插件 |
 | 材料块顺序不固定 | `MaterialBlock.order` 可选缺省 0，同号按插件加载先后，热重载后会变；段落却按 id 决胜 | `order` 必填，同号按 `from` 排 |
 | 热重载行为随 Node 版本变 | engines 写 22.5，`registerHooks` 要 22.15，版本不够悄悄退回只刷新入口 | engines 22.15，没有就报错 |
-| 多模态各插件自己绕 | 模型消息只有 `content: string`，`look.ts`、`vision.ts` 用 `as unknown as ChatMessage[]` 传图 | 只定形状：`MediaFields`（mime/ref/bytes/durationMs）进 `Part` / `Percept`，`ChatMessage.parts?`，`BlobStore` + `blobRef` 内容哈希，`Feedback` 事件形状；内核不写机制 |
+| 多模态各插件自己绕 | 模型消息只有 `content: string`，`look.ts`、`vision.ts` 用 `as unknown as ChatMessage[]` 传图 | 只定形状：`MediaFields`（mime/ref/bytes/durationMs）只挂在 `Part` 上，`Percept.parts?` 与 `ChatMessage.parts?` 都是 `Part[]`（一条消息几张图、一帧几路传感器，进出同一种片段；否决了 `Percept` 直接带媒体字段——一条感知只能带一个媒体，和出口不对称），`BlobStore` + `blobRef` 内容哈希，`Feedback` 事件形状；内核不写机制 |
 | 「热重载 / 平行历史」误判 | 只比最后一条存量的序号，内存与存量条数相同就当成热重载，存量被跳过 | 序号、时间、类型一起比 |
+| 材料块顺序没有统一的表 | 段落有 `PROMPT_ORDER`，`beat/gather` 的材料块却是各插件自写裸数字（5、6、20、21、25…60），第三方照样各写各的 | `src/shared/order.ts` 加 `MATERIAL_ORDER`，和 `PROMPT_ORDER` 同一条约定；现有插件迁到槽位等重做 |
+| 决策卡住整个节拍停摆 | decider 的 Promise 永不结束（provider 没响应又没设超时），`beating` 一直为真，之后的唤醒全部积压，角色悄悄死掉 | `decideTimeoutMs`（默认 120 秒）到点记 `beat.decide-timeout`、按空决策走；`Decider` 多收一个 `signal`，让它停掉自己的调用 |
+| 发声 end() 之后还能 emit | 有回执端时 end 后等呈现，期间 emit 仍往 generated 加字，I2 的账对不上 | end 之后的 emit 不算数 |
+| 小的不统一 | `model.response.usage` 把整个 chunk（带 `type`）记进去；`ActionRun.remember` 带不了 `data`，Note 却有；`plugins/` 目录读不了时静默当作没有插件 | usage 只记两个数；remember 收 `data`；目录读不了大声失败 |
+| 提供者重载失败，依赖者被永久丢掉 | `reload()` 先卸依赖者再装提供者，提供者装失败就跳过回装；依赖者不在 loaded 也不在 failures，`scan()` 也不会再试 | 卸提供者（重载、停用）时依赖者一并卸下再**挂回等待队列**，服务回来自动装上，期间 `list()` 显示在等什么 |
+| 等依赖的插件 apply 抛错记错了人 | 容器在 `load(B)` 里顺手激活等 B 的 A，A 抛错让 `load(B)` 拒绝：装配层把 A 的错记在 B 头上，A 看起来正常，谁都救不回来 | 容器只为自己的失败抛错；别人的失败记 `plugin.failed` 进日志，装配层据此标记；同一轮其它等待者照常激活 |
+| `setEnabled(提供者, false)` 不级联 | 依赖者攥着关掉的服务继续跑，`list()` 看不出 | 同上，unload 级联 |
+| `reset()` 后再挂存储，序号倒回 | 冷启动分支 `seq = maxStored`，库已清空就是 0，还在跑的动作 id 会被撞上 | `seq = max(seq, maxStored)` |
+| 配置变更订阅在一条路径上丢失 | 配置服务缺席期间装过插件，`watchedConfig` 变成 undefined，服务回来后条件为假、永不重订阅 | 只比「现在的配置服务 ≠ 订阅的那个」 |
+| 到点没回执把全文记成送达 | `settle-timeout` 记 `generated`，打断却记回执前缀，两条路径口径相反 | 都只认回执前缀 |
+| `model.bind` 不查重、disposer 删别人的 | 同一角色绑两次静默覆盖，先注册者的 disposer 把后注册者的也删了 | 重复即抛；disposer 只撤自己那份 |
+| 并发 `reload()` 假失败 | 文件监视、配置订阅、手工命令三条路都直接调，第二个进来时第一个还卡在 apply 里，报「已加载」 | 重载 / 启停 / 重扫串行 |
+| 决策超时定时器悬挂 | decider 同步抛错时 clearTimeout 没挂上；`dispose()` 不叫停在途决策 | 同步抛错转 rejected；dispose abort 在途决策，决策期间被关掉就不再派发 |
+| 装配层还有「悄悄退化」与两套失败口径 | `reload()` 重扫清单失败就沿用旧清单不报不记；「依赖的服务不存在」只返回给 `scan()`，`list()` 却显示装好了没毛病 | 重扫失败记进 `list().error`、这次不重载；毛病只从一处取（`problem()`），`list()` / `scan()` / 抛出的错同一句 |
 
 ### 9.4 明确推迟的（每一项都验证过"回来时内核不动"）
 
@@ -465,6 +488,7 @@ Gate 层要不要 · marker 词汇有哪些 · 情绪维度全局还是按对象
 | 注释写**为什么**，不写代码在干嘛 | 尤其：这个分支为何存在、这个顺序为何重要、这个降级为何安全 |
 | 文件头 JSDoc 说清该模块的**契约与立场** | 内核每个文件都有，照着写 |
 | 中文注释 | 项目是中文的，保持一致 |
+| 错误与控制台文案用英文 | 抛错写 `<发生了什么>: <标识>`：小写开头、不加句号、不加模块前缀；控制台写 `[模块] <发生了什么>: <标识>`，模块名即目录名（io / mind / loader…），不用 ✓ ✗ 这类符号。原因写在注释里，文案只留定位用的标识 |
 | 早返回，少嵌套 | 但不为减少缩进而抽壳函数 |
 | 空 catch 必须写清吞了什么、为什么安全 | 见 `provider-openai` 的坏帧跳过 |
 | 不为"以后可能用"预留抽象 | 推迟表里的东西都验证过内核不动，就别提前建 |
@@ -474,12 +498,12 @@ Gate 层要不要 · marker 词汇有哪些 · 情绪维度全局还是按对象
 ## 11. 命令
 
 ```bash
-npm start          # 起沐沐（CLI）
+npm start          # 裸启内核；终端等表现端插件在 bridge 分支
 npm run check      # tsc 严格模式
 npm test           # node:test
 ```
 
-运行时命令：`/plugins` · `/plugin enable|disable|reload <id>` · `/config get|set <路径> [值]` · `/log [n]` · `/quit`
+运行时命令（commands 插件提供，在 bridge 分支）：`/plugins` · `/plugin enable|disable|reload <id>` · `/config get|set <路径> [值]` · `/log [n]` · `/quit`
 
 开发时改插件文件**自动热重载**（watch 默认开）。
 

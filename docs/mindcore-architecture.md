@@ -62,8 +62,9 @@ flowchart TB
 这是全套设计里最关键的一条，也是 v0.2 → v0.3 修掉的最大缺陷。
 
 ```
-Percept { kind: string, channel?, sender?, text?, urgent?, data? }   ← 进
-Part    { kind: string, text?, data? }                               ← 出
+Percept { kind: string, channel?, sender?, text?, urgent?, parts?: Part[], data? }   ← 进
+Part    { kind: string, text?, data?, ...MediaFields }                              ← 出；也是进的片段
+MediaFields { mime?, ref?, bytes?, durationMs? }   非文本载荷：本体在 BlobStore，这里只记 ref
 ```
 
 `kind` 两边都是**自由字符串**：`message` / `danmaku` / `vision.frame` / `file` / `image` / `card` / `game.cmd`……内核**一个都不认识**，语义由插件定义。
@@ -266,7 +267,7 @@ loader 递归扫描自动装配，**入口不写死任何插件**。
 
 ## 7. 现状与推迟
 
-**已实现**：九机制内核 · 插件目录化自组装 + 热加载 · SQLite 存储与配置库 · 8 个官方插件（Web 表现端 v1 已删，v2 见 [periphery.md](periphery.md)）· 真 API 端到端验证（流式对话、说话中硬打断且 delivered 逐字正确、运行时启用主题插件改样式、fs.watch 自动热重载）。
+**已实现**：九机制内核 · 插件目录化自组装 + 热加载 · SQLite 存储与配置库 · 官方插件（在 `bridge` 分支，外围方案见那边的 periphery.md）· 真 API 端到端验证（流式对话、说话中硬打断且 delivered 逐字正确、运行时启用主题插件改样式、fs.watch 自动热重载）。
 
 Web 表现端是 `log.appended` 观察口的第一个消费方，也是「UI 从真源投影、不持第二份状态」的示范：SSE 先重放存量再直播，页面渲染完回报送达。
 
@@ -295,7 +296,7 @@ Gate 层要不要 · marker 词汇有哪些 · 情绪维度全局还是按对象
 |---|---|
 | 心流 / 统一中枢 | §3 Beat 模型（合流/退避/熔断、开放材料、wait 不是动作、主大脑不说话） |
 | 内核 ↔ 表现端协议 | §2 两端对称开放信封 + 结构位 + 一条降级规则 |
-| 内核模块划分与选型 | §1 九机制；Node 22+ / ESM / 零运行时依赖 / SQLite / node:test |
+| 内核模块划分与选型 | §1 九机制；Node 22.15+ / ESM / 零运行时依赖 / SQLite / node:test |
 | 插件机制 | §6 目录化自组装、热加载、三种交互、插件改插件、扩展点表 |
 | 反射与情绪 | 反射 = `percept/pre-beat` 上的插件；情绪 = 听日志 + 贡献 block 的插件（推迟） |
 | 记忆系统 | 插件：服务 + 惰性段落 + `beat/gather`（推迟） |

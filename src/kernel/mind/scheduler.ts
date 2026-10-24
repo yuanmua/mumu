@@ -63,13 +63,15 @@ export interface BeatMaterial {
   blocks: MaterialBlock[] // 插件经 beat/gather 贡献，已按 order 排序
 }
 
-export type Decider = (m: BeatMaterial) => Promise<Decision>
+/** signal 在决策超时时触发，decider 据此停掉自己的模型调用 */
+export type Decider = (m: BeatMaterial, signal: AbortSignal) => Promise<Decision>
 
 export interface MindOptions {
   cooldownMs?: number // 唤醒合流冷却窗口
   backoffBaseMs?: number // 内生唤醒退避基数
   backoffMaxMs?: number // 退避上限
   emptyFuse?: number // 连续空拍多少次后熔断
+  decideTimeoutMs?: number // 决策时限，到点按空决策走并记 beat.decide-timeout；0 为不设限
 }
 
 export class Mind {
@@ -79,6 +81,7 @@ export class Mind {
   private rethink = false
   private timer?: NodeJS.Timeout
   private wakeAfterTimer?: NodeJS.Timeout
+  private deciding?: AbortController // 在途的决策；dispose 时叫停
   private lastBeatEnd = 0
   private emptyStreak = 0
   private idle = false
@@ -88,6 +91,7 @@ export class Mind {
   private readonly backoffBaseMs: number
   private readonly backoffMaxMs: number
   private readonly emptyFuse: number
+  private readonly decideTimeoutMs: number
 
   constructor(private deps: {
     gather: (reasons: WakeReason[]) => Promise<BeatMaterial>
@@ -100,12 +104,13 @@ export class Mind {
     this.backoffBaseMs = o.backoffBaseMs ?? 1000
     this.backoffMaxMs = o.backoffMaxMs ?? 30_000
     this.emptyFuse = o.emptyFuse ?? 3
+    this.decideTimeoutMs = o.decideTimeoutMs ?? 120_000
   }
 
   /** 独占槽位；换 decider 即换决策实现 */
   setDecider(d: Decider): Disposer {
     if (this.decider)
-      throw new Error('decider 已被占用（先卸载旧的 mind 插件）')
+      throw new Error('decider already set')
     this.decider = d
     return () => { this.decider = undefined }
   }
@@ -174,7 +179,7 @@ export class Mind {
           material = await this.deps.gather(reasons)
         }
         catch (e) {
-          console.error('[mind] 汇聚材料失败，本拍作废:', e)
+          console.error('[mind] gather failed, beat dropped:', e)
           this.deps.log('beat.failed', {
             reasons: reasons.map(r => ({ source: r.source, text: r.text })),
             error: errorText(e),
@@ -188,21 +193,25 @@ export class Mind {
         let decision: Decision = { intents: [] }
         if (this.decider) {
           try {
-            decision = await this.decider(material)
+            decision = await this.decide(material)
           }
           catch (e) {
             // 降级必须可见：这一拍按空决策走，但日志里要看得出是「想失败了」而不是「决定不动」
-            console.error('[mind] 决策失败:', e)
-            this.deps.log('beat.decide-failed', { error: errorText(e) })
+            console.error('[mind] decide failed:', e)
+            if (e instanceof KernelError && e.code === 'decide-timeout')
+              this.deps.log('beat.decide-timeout', { afterMs: this.decideTimeoutMs })
+            else this.deps.log('beat.decide-failed', { error: errorText(e) })
           }
         }
+        if (this.disposed)
+          break // 决策期间被关掉：意图不再派发
 
         for (const intent of decision.intents) {
           try {
             await this.deps.dispatch(intent, decision.note)
           }
           catch (e) {
-            console.error('[mind] 派发失败:', e)
+            console.error('[mind] dispatch failed:', e)
             this.deps.log('intent.dispatch-failed', { intent, code: errorCode(e), error: errorText(e) })
           }
         }
@@ -235,6 +244,35 @@ export class Mind {
     }
   }
 
+  /**
+   * 带时限的决策。决策卡住（provider 没响应又没设超时）整个节拍就停了，之后的唤醒全部积压、角色悄悄死掉；
+   * 到点就按超时处理，给 decider 的 signal 让它停掉自己的调用，晚到的结果不要
+   */
+  private decide(material: BeatMaterial): Promise<Decision> {
+    const ctl = new AbortController()
+    this.deciding = ctl
+    return new Promise<Decision>((resolve, reject) => {
+      const timer = this.decideTimeoutMs > 0
+        ? setTimeout(() => {
+            ctl.abort('decide-timeout')
+            reject(new KernelError('decide-timeout', `decide timed out after ${this.decideTimeoutMs}ms`))
+          }, this.decideTimeoutMs)
+        : undefined
+      let result: Promise<Decision>
+      try {
+        result = this.decider!(material, ctl.signal)
+      }
+      catch (e) {
+        result = Promise.reject(e)
+      }
+      result.then(resolve, reject).finally(() => {
+        clearTimeout(timer)
+        if (this.deciding === ctl)
+          this.deciding = undefined
+      })
+    })
+  }
+
   /** 同源连续唤醒指数退避，间隔够久自动清零 */
   private bumpBackoff(source: string): void {
     const now = Date.now()
@@ -250,6 +288,7 @@ export class Mind {
     this.disposed = true
     clearTimeout(this.timer)
     clearTimeout(this.wakeAfterTimer)
+    this.deciding?.abort('dispose')
   }
 }
 

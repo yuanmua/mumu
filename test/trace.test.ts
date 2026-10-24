@@ -81,6 +81,7 @@ test('model.request / model.response：采样参数与模型原始输出（文�
     { type: 'text', text: '呀' },
   ])
   assert.equal(res.data.chars, 3)
+  assert.deepEqual(res.data.usage, { prompt: 3, completion: 3 })
   assert.equal(res.data.error, undefined)
 })
 

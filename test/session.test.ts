@@ -86,3 +86,12 @@ test('持久化：平行历史（存储晚挂载）重编序号接续存量', ()
   assert.deepEqual(store.events.map(e => e.type), ['old-a', 'old-b', 'log.opened', 'boot'])
   assert.equal(log.append('next', {}).seq, 5)
 })
+
+test('持久化：reset 后再挂存储，序号不倒回（还在跑的动作 id 不会被撞上）', () => {
+  const log = new SessionLog()
+  log.append('x', {})
+  const before = log.append('x', {}).seq
+  log.reset()
+  log.attachPersistence({ loadAll: () => [], append: () => {} })
+  assert.ok(log.append('y', {}).seq > before)
+})

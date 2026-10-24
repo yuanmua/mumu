@@ -18,7 +18,7 @@ export class Registry<T> {
   add(item: T): Disposer {
     const key = this.keyOf ? this.keyOf(item) : `#${++this.seq}`
     if (this.keyOf && this.items.has(key))
-      throw new Error(`${this.label} ${key} 已存在`)
+      throw new Error(`${this.label} already registered: ${key}`)
     this.items.set(key, item)
     return () => { this.items.delete(key) }
   }
